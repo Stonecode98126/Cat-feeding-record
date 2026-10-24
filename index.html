@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#FDF1F3">
+  <title>花花餵食記錄</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FDF1F3;        /* 肉球粉底 */
+      --card: #FFFFFF;
+      --ink: #3A2A24;       /* 花花的深棕毛色 */
+      --ink-soft: #8A7068;
+      --patch: #F28C38;     /* 頭頂那塊橘 */
+      --patch-dark: #D9711F;
+      --pad: #F6A5B6;       /* 肉球粉 */
+      --line: #F1D6DC;
+      --warn-bg: #FFF1E3;
+      --warn-ink: #9A4A0B;
+      --err-ink: #B42335;
+      --hand: "LXGW WenKai TC", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      --body: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--body);
+      font-size: 16px;
+      line-height: 1.5;
+      min-height: 100vh;
+      padding-bottom: calc(120px + env(safe-area-inset-bottom));
+    }
+
+    .page {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px 16px 0;
+    }
+
+    /* ---------- 頂部：花花與上一餐 ---------- */
+    .hero {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .hero svg { flex: 0 0 76px; width: 76px; height: 76px; }
+
+    .hero-text { flex: 1; min-width: 0; }
+
+    .hero-label {
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    .cat-name {
+      font-family: var(--hand);
+      font-weight: 700;
+      font-size: 34px;
+      line-height: 1.15;
+      color: var(--ink);
+      background: transparent;
+      border: none;
+      border-bottom: 2px dashed transparent;
+      width: 100%;
+      padding: 0;
+      outline: none;
+    }
+
+    .cat-name:focus { border-bottom-color: var(--pad); }
+
+    .last-feed {
+      position: relative;
+      margin-top: 16px;
+      background: var(--card);
+      border-radius: 18px;
+      padding: 12px 16px;
+      font-size: 15px;
+      box-shadow: 0 2px 0 var(--line);
+    }
+
+    .last-feed::before {
+      content: "";
+      position: absolute;
+      top: -8px;
+      left: 30px;
+      border: 8px solid transparent;
+      border-top: 0;
+      border-bottom-color: var(--card);
+    }
+
+    .last-feed strong {
+      font-family: var(--hand);
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .last-feed .ago { color: var(--ink-soft); }
+    .last-feed.is-recent .ago { color: var(--patch-dark); font-weight: 600; }
+
+    /* ---------- 欄位 ---------- */
+    .field { margin-top: 26px; border: none; }
+
+    .field > legend,
+    .field > label {
+      display: block;
+      font-family: var(--hand);
+      font-weight: 700;
+      font-size: 19px;
+      margin-bottom: 10px;
+    }
+
+    .field .hint {
+      font-family: var(--body);
+      font-weight: 400;
+      font-size: 13px;
+      color: var(--ink-soft);
+      margin-left: 6px;
+    }
+
+    .chips { display: grid; gap: 8px; }
+    .chips.cols-4 { grid-template-columns: repeat(4, 1fr); }
+    .chips.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .chips.cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+    .chip {
+      appearance: none;
+      min-height: 52px;
+      border: 2px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      border-radius: 16px;
+      font-family: var(--body);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 8px 6px;
+      transition: transform .08s ease, background-color .15s ease, border-color .15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .chip:active { transform: scale(.96); }
+
+    .chip[aria-checked="true"] {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff;
+    }
+
+    .chip:focus-visible,
+    .submit:focus-visible,
+    .cat-name:focus-visible,
+    .note-input:focus-visible,
+    .custom-time:focus-visible {
+      outline: 3px solid var(--patch);
+      outline-offset: 2px;
+    }
+
+    /* 份量：數字放大 */
+    .chip.amount {
+      min-height: 64px;
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 3px;
+    }
+
+    .chip.amount .num {
+      font-family: var(--hand);
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .chip.amount .unit { font-size: 14px; font-weight: 500; }
+
+    /* 狀態：表情在上 */
+    .chip.status {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 15px;
+    }
+
+    .chip.status .emo { font-size: 24px; line-height: 1; }
+
+    .time-chips { grid-template-columns: repeat(5, 1fr); }
+    .time-chips .chip { font-size: 14px; padding: 6px 2px; }
+
+    .time-result {
+      margin-top: 8px;
+      font-size: 14px;
+      color: var(--ink-soft);
+    }
+
+    .custom-time {
+      display: none;
+      margin-top: 10px;
+      width: 100%;
+      min-height: 52px;
+      padding: 10px 14px;
+      font-size: 17px;
+      font-family: var(--body);
+      color: var(--ink);
+      background: var(--card);
+      border: 2px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .custom-time.show { display: block; }
+
+    .note-wrap { position: relative; }
+
+    .note-input {
+      width: 100%;
+      min-height: 52px;
+      padding: 12px 64px 12px 14px;
+      font-size: 16px;
+      font-family: var(--body);
+      color: var(--ink);
+      background: var(--card);
+      border: 2px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .note-input::placeholder { color: #BBA8A3; }
+
+    .note-count {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    /* ---------- 底部送出 ---------- */
+    .dock {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(to top, var(--bg) 70%, rgba(253, 241, 243, 0));
+      padding: 18px 16px calc(14px + env(safe-area-inset-bottom));
+    }
+
+    .dock-inner { max-width: 480px; margin: 0 auto; }
+
+    .summary {
+      text-align: center;
+      font-size: 14px;
+      color: var(--ink-soft);
+      margin-bottom: 8px;
+      min-height: 21px;
+    }
+
+    .summary.missing { color: var(--err-ink); }
+
+    .submit {
+      appearance: none;
+      width: 100%;
+      min-height: 58px;
+      border: none;
+      border-radius: 18px;
+      background: var(--patch);
+      color: #fff;
+      font-family: var(--hand);
+      font-size: 22px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 0 var(--patch-dark);
+      transition: transform .08s ease, box-shadow .08s ease;
+    }
+
+    .submit:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--patch-dark); }
+
+    .submit[disabled] { opacity: .6; cursor: default; }
+
+    .submit.confirm {
+      background: var(--warn-bg);
+      color: var(--warn-ink);
+      box-shadow: 0 4px 0 #F2C79E;
+      font-size: 18px;
+    }
+
+    /* ---------- 送出結果 ---------- */
+    .toast {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      top: calc(16px + env(safe-area-inset-top));
+      max-width: 448px;
+      margin: 0 auto;
+      background: var(--ink);
+      color: #fff;
+      border-radius: 16px;
+      padding: 14px 18px;
+      font-size: 16px;
+      text-align: center;
+      transform: translateY(-140%);
+      visibility: hidden;
+      transition: transform .25s ease, visibility 0s linear .25s;
+      z-index: 10;
+    }
+
+    .toast.show { transform: translateY(0); visibility: visible; transition: transform .25s ease; }
+    .toast.error { background: var(--err-ink); }
+
+    @keyframes nudge {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+
+    .nudge { animation: nudge .25s ease 2; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    @media (max-width: 350px) {
+      .time-chips { grid-template-columns: repeat(3, 1fr); }
+      .chips.cols-4 { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+
+    <header class="hero">
+      <!-- 花花：深棕毛、頭頂一塊橘、白嘴邊 -->
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M18 44 L22 10 L44 30 Z" fill="#3A2A24"/>
+        <path d="M82 44 L78 10 L56 30 Z" fill="#3A2A24"/>
+        <path d="M24 36 L26 18 L38 30 Z" fill="#F6A5B6"/>
+        <path d="M76 36 L74 18 L62 30 Z" fill="#F6A5B6"/>
+        <ellipse cx="50" cy="58" rx="38" ry="34" fill="#3A2A24"/>
+        <path d="M36 28 Q50 20 64 28 Q58 40 50 40 Q42 40 36 28 Z" fill="#F28C38"/>
+        <ellipse cx="50" cy="72" rx="20" ry="15" fill="#FFFFFF"/>
+        <circle cx="36" cy="56" r="7" fill="#FFFFFF"/>
+        <circle cx="64" cy="56" r="7" fill="#FFFFFF"/>
+        <circle cx="37" cy="57" r="4.2" fill="#3A2A24"/>
+        <circle cx="65" cy="57" r="4.2" fill="#3A2A24"/>
+        <circle cx="38.5" cy="55" r="1.4" fill="#FFFFFF"/>
+        <circle cx="66.5" cy="55" r="1.4" fill="#FFFFFF"/>
+        <path d="M46 66 L54 66 L50 70 Z" fill="#F6A5B6"/>
+        <path d="M50 70 Q46 75 42 73 M50 70 Q54 75 58 73" stroke="#3A2A24" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div class="hero-text">
+        <label class="hero-label" for="catName">今天餵的是</label>
+        <input class="cat-name" id="catName" value="花花" maxlength="10" autocomplete="off">
+      </div>
+    </header>
+
+    <div class="last-feed" id="lastFeed" aria-live="polite">讀取上一餐…</div>
+
+    <form id="feedForm" novalidate>
+      <fieldset class="field">
+        <legend>誰餵的</legend>
+        <div class="chips cols-4" role="radiogroup" aria-label="餵食者" id="feederChips"></div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend>餵了幾匙</legend>
+        <div class="chips cols-3" role="radiogroup" aria-label="份量" id="amountChips"></div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend>什麼時候餵的</legend>
+        <div class="chips time-chips" role="radiogroup" aria-label="餵食時間" id="timeChips"></div>
+        <input type="datetime-local" class="custom-time" id="customTime" aria-label="自訂餵食時間">
+        <p class="time-result" id="timeResult"></p>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend>吃得怎麼樣</legend>
+        <div class="chips cols-2" role="radiogroup" aria-label="貓咪狀態" id="statusChips"></div>
+      </fieldset>
+
+      <div class="field">
+        <label for="note">備註 <span class="hint">可不填，最多 30 字</span></label>
+        <div class="note-wrap">
+          <input type="text" class="note-input" id="note" maxlength="30" placeholder="例如：今天乖乖會坐下" autocomplete="off">
+          <span class="note-count" id="noteCount">0/30</span>
+        </div>
+      </div>
+    </form>
+  </main>
+
+  <div class="dock">
+    <div class="dock-inner">
+      <p class="summary" id="summary" aria-live="polite"></p>
+      <button type="submit" form="feedForm" class="submit" id="submitBtn">記錄這一餐</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // ====== 設定 ======
+    const SCRIPT_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL'; // 換成部署好的 Web App 網址
+    const MIN_GAP_MIN = 120; // 距上一餐少於這個分鐘數就先提醒
+
+    const FEEDERS = ['爸爸', '媽媽', '睿睿', '葳葳'];
+    const AMOUNTS = [3, 2.5, 2, 1.5, 1, 0.5];
+    const TIMES = [
+      { key: 'now', label: '現在', min: 0 },
+      { key: '15', label: '15 分前', min: 15 },
+      { key: '30', label: '30 分前', min: 30 },
+      { key: '60', label: '1 小時前', min: 60 },
+      { key: 'custom', label: '自訂' }
+    ];
+    const STATUSES = [
+      { value: '食慾良好', emo: '😋', label: '秒殺' },
+      { value: '正常吃完', emo: '🙂', label: '正常吃完' },
+      { value: '挑食/剩食', emo: '😼', label: '挑食剩食' },
+      { value: '食慾不佳', emo: '😿', label: '食慾不佳' }
+    ];
+
+    // ====== 狀態 ======
+    const state = {
+      feeder: load('feeder'),
+      amount: load('amount') !== null ? Number(load('amount')) : null,
+      timeKey: 'now',
+      status: '正常吃完',
+      last: null,
+      confirming: false,
+      sending: false
+    };
+    if (!FEEDERS.includes(state.feeder)) state.feeder = null;
+    if (!AMOUNTS.includes(state.amount)) state.amount = null;
+
+    const $ = id => document.getElementById(id);
+
+    // ====== 小工具 ======
+    function load(k) { try { return localStorage.getItem('huahua.' + k); } catch (e) { return null; } }
+    function save(k, v) { try { localStorage.setItem('huahua.' + k, v); } catch (e) {} }
+    const pad2 = n => String(n).padStart(2, '0');
+    const fmtTime = d => `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    const toLocalInput = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+
+    function fmtGap(ms) {
+      const m = Math.max(0, Math.round(ms / 60000));
+      if (m < 60) return `${m} 分鐘`;
+      const h = Math.floor(m / 60), r = m % 60;
+      return r ? `${h} 小時 ${r} 分` : `${h} 小時`;
+    }
+
+    function feedTime() {
+      if (state.timeKey === 'custom') {
+        const v = $('customTime').value;
+        return v ? new Date(v) : null;
+      }
+      const t = TIMES.find(x => x.key === state.timeKey);
+      return new Date(Date.now() - t.min * 60000);
+    }
+
+    // ====== 按鈕群組 ======
+    function renderChips(container, items, isOn, onPick, build) {
+      container.innerHTML = '';
+      items.forEach(item => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('role', 'radio');
+        b.setAttribute('aria-checked', isOn(item) ? 'true' : 'false');
+        build(b, item);
+        b.addEventListener('click', () => {
+          onPick(item);
+          state.confirming = false;
+          renderAll();
+        });
+        container.appendChild(b);
+      });
+    }
+
+    function renderAll() {
+      renderChips($('feederChips'), FEEDERS, f => f === state.feeder,
+        f => { state.feeder = f; save('feeder', f); },
+        (b, f) => { b.className = 'chip'; b.textContent = f; });
+
+      renderChips($('amountChips'), AMOUNTS, a => a === state.amount,
+        a => { state.amount = a; save('amount', a); },
+        (b, a) => {
+          b.className = 'chip amount';
+          b.innerHTML = `<span class="num">${a}</span><span class="unit">匙</span>`;
+          b.setAttribute('aria-label', `${a} 匙`);
+        });
+
+      renderChips($('timeChips'), TIMES, t => t.key === state.timeKey,
+        t => {
+          state.timeKey = t.key;
+          if (t.key === 'custom' && !$('customTime').value) {
+            $('customTime').value = toLocalInput(new Date());
+          }
+        },
+        (b, t) => { b.className = 'chip'; b.textContent = t.label; });
+
+      renderChips($('statusChips'), STATUSES, s => s.value === state.status,
+        s => { state.status = s.value; },
+        (b, s) => {
+          b.className = 'chip status';
+          b.innerHTML = `<span class="emo" aria-hidden="true">${s.emo}</span><span>${s.label}</span>`;
+        });
+
+      $('customTime').classList.toggle('show', state.timeKey === 'custom');
+      $('customTime').max = toLocalInput(new Date());
+      renderTimeResult();
+      renderSummary();
+      renderLast();
+    }
+
+    function renderTimeResult() {
+      const t = feedTime();
+      $('timeResult').textContent = t ? `記為 ${fmtTime(t)}` : '請選擇時間';
+    }
+
+    function renderSummary() {
+      const s = $('summary'), btn = $('submitBtn');
+      const missing = [];
+      if (!state.feeder) missing.push('誰餵的');
+      if (state.amount === null) missing.push('幾匙');
+      if (missing.length) {
+        s.textContent = `還沒選：${missing.join('、')}`;
+        s.classList.add('missing');
+      } else {
+        const t = feedTime();
+        s.textContent = `${state.feeder}・${state.amount} 匙・${t ? fmtTime(t) : '時間未選'}`;
+        s.classList.remove('missing');
+      }
+      btn.classList.toggle('confirm', state.confirming);
+      if (!state.confirming && !state.sending) btn.textContent = '記錄這一餐';
+    }
+
+    function renderLast() {
+      const box = $('lastFeed');
+      if (!state.last) return;
+      const t = new Date(state.last.time);
+      const gap = Date.now() - t.getTime();
+      box.classList.toggle('is-recent', gap < MIN_GAP_MIN * 60000);
+      box.innerHTML = `上一餐 <strong>${fmtTime(t)}</strong>・${state.last.feeder}・${state.last.amount} 匙<br>` +
+        `<span class="ago">${fmtGap(gap)}前</span>`;
+    }
+
+    // ====== 讀取上一餐 ======
+    async function fetchLast() {
+      const box = $('lastFeed');
+      if (SCRIPT_URL.startsWith('YOUR_')) {
+        box.textContent = '尚未設定 Apps Script 網址，請先修改程式中的 SCRIPT_URL。';
+        return;
+      }
+      try {
+        const res = await fetch(SCRIPT_URL);
+        const data = await res.json();
+        if (data.ok && data.last) {
+          state.last = data.last;
+          renderLast();
+        } else if (data.ok) {
+          box.textContent = '還沒有任何記錄，這會是第一餐。';
+        } else {
+          box.textContent = `讀不到上一餐：${data.error || '未知錯誤'}`;
+        }
+      } catch (err) {
+        box.textContent = '讀不到上一餐：請檢查網路，重新整理頁面。';
+      }
+    }
+
+    // ====== 送出 ======
+    function toast(msg, isError) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.toggle('error', !!isError);
+      t.classList.add('show');
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => t.classList.remove('show'), isError ? 4000 : 2600);
+    }
+
+    $('feedForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      if (state.sending) return;
+      const btn = $('submitBtn');
+
+      if (!state.feeder || state.amount === null) {
+        $('summary').classList.remove('nudge');
+        void $('summary').offsetWidth;
+        $('summary').classList.add('nudge');
+        return;
+      }
+
+      const t = feedTime();
+      if (!t || isNaN(t)) { toast('請選擇餵食時間', true); return; }
+      if (t.getTime() > Date.now() + 60000) { toast('餵食時間不能晚於現在', true); return; }
+
+      // 距上一餐太近：第一次按先提醒，再按一次才送出
+      if (state.last && !state.confirming) {
+        const gap = t.getTime() - state.last.time;
+        if (gap >= 0 && gap < MIN_GAP_MIN * 60000) {
+          state.confirming = true;
+          renderSummary();
+          btn.textContent = `距上一餐才 ${fmtGap(gap)}，仍要記錄`;
+          return;
+        }
+      }
+
+      if (SCRIPT_URL.startsWith('YOUR_')) { toast('尚未設定 Apps Script 網址', true); return; }
+
+      const payload = {
+        catName: $('catName').value.trim() || '花花',
+        feeder: state.feeder,
+        amount: state.amount,
+        feedTime: t.getTime(),
+        catStatus: state.status,
+        note: $('note').value.trim().slice(0, 30)
+      };
+
+      state.sending = true;
+      btn.disabled = true;
+      btn.textContent = '記錄中…';
+
+      try {
+        // 不設 Content-Type、不用 no-cors：瀏覽器會以 text/plain 送出，不觸發預檢，也能讀到回應
+        const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || '寫入失敗');
+
+        state.last = data.last || { time: payload.feedTime, feeder: payload.feeder, amount: payload.amount };
+        toast(`已記錄：${payload.catName}・${payload.feeder}・${payload.amount} 匙`);
+
+        // 保留餵食者與份量（下次通常一樣），其他回到預設
+        state.timeKey = 'now';
+        state.status = '正常吃完';
+        $('note').value = '';
+        $('noteCount').textContent = '0/30';
+      } catch (err) {
+        toast(`沒有記錄成功：${err.message === 'Failed to fetch' ? '請檢查網路' : err.message}，再按一次`, true);
+      } finally {
+        state.sending = false;
+        state.confirming = false;
+        btn.disabled = false;
+        renderAll();
+      }
+    });
+
+    $('customTime').addEventListener('input', () => { state.confirming = false; renderTimeResult(); renderSummary(); });
+    $('note').addEventListener('input', e => { $('noteCount').textContent = `${e.target.value.length}/30`; });
+
+    // 每分鐘更新「幾分鐘前」與「現在」的時間
+    setInterval(() => { renderTimeResult(); renderSummary(); renderLast(); }, 60000);
+
+    renderAll();
+    fetchLast();
+  </script>
+</body>
+</html>
