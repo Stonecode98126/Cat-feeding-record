@@ -105,6 +105,8 @@
 
     .last-feed .ago { color: var(--ink-soft); }
     .last-feed.is-recent .ago { color: var(--patch-dark); font-weight: 600; }
+    .last-status { display: block; margin-top: 2px; }
+    .last-status.bad { color: var(--err-ink); font-weight: 600; }
 
     /* ---------- 欄位 ---------- */
     .field { margin-top: 26px; border: none; }
@@ -547,10 +549,23 @@
       const t = new Date(state.last.time);
       const gap = Date.now() - t.getTime();
       box.classList.toggle('is-recent', gap < MIN_GAP_MIN * 60000);
-      box.innerHTML = `上一餐 <strong>${fmtTime(t)}</strong>・${state.last.feeder}・${state.last.amount} 匙<br>` +
+
+      const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const st = STATUSES.find(s => s.value === state.last.status);
+      const bad = state.last.status === '挑食/剩食' || state.last.status === '食慾不佳';
+      let statusLine = '';
+      if (st) {
+        statusLine = `<span class="last-status${bad ? ' bad' : ''}">${st.emo} 吃得：${st.label}`;
+        if (state.last.note) statusLine += `・${esc(state.last.note)}`;
+        statusLine += '</span>';
+      } else if (state.last.note) {
+        statusLine = `<span class="last-status">備註：${esc(state.last.note)}</span>`;
+      }
+
+      box.innerHTML = `上一餐 <strong>${fmtTime(t)}</strong>・${esc(state.last.feeder)}・${state.last.amount} 匙` +
+        statusLine +
         `<span class="ago">${fmtGap(gap)}前</span>`;
     }
-
     // ====== 讀取上一餐 ======
     async function fetchLast() {
       const box = $('lastFeed');
