@@ -647,7 +647,8 @@
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || '寫入失敗');
 
-        state.last = data.last || { time: payload.feedTime, feeder: payload.feeder, amount: payload.amount };
+        state.last = data.last || { time: payload.feedTime, feeder: payload.feeder, amount: payload.amount,
+                                    status: payload.catStatus, note: payload.note };
         toast(`已記錄：${payload.catName}・${payload.feeder}・${payload.amount} 匙`);
 
         // 保留餵食者與份量（下次通常一樣），其他回到預設
