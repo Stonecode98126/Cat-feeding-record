@@ -190,3 +190,738 @@
       border-color: var(--ink);
       color: #fff;
     }
+
+    .chip:focus-visible,
+    .submit:focus-visible,
+    .note-input:focus-visible,
+    .custom-time:focus-visible {
+      outline: 3px solid var(--patch);
+      outline-offset: 2px;
+    }
+
+    /* 份量：數字放大 */
+    .chip.amount {
+      min-height: 48px;
+      padding: 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+    }
+
+    .chip.amount .num {
+      font-family: var(--hand);
+      font-size: 23px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .chip.amount .unit { font-size: 12px; font-weight: 500; line-height: 1; }
+
+    /* 狀態：表情在上 */
+    .chip.status {
+      min-height: 52px;
+      padding: 4px 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: 13px;
+    }
+
+    .chip.status .emo { font-size: 20px; line-height: 1; }
+
+    .time-chips { grid-template-columns: repeat(5, 1fr); }
+    .time-chips .chip { font-size: 14px; padding: 6px 2px; }
+
+    .time-result {
+      margin-top: 4px;
+      font-size: 14px;
+      color: var(--ink-soft);
+    }
+
+    .custom-time {
+      display: none;
+      margin-top: 6px;
+      width: 100%;
+      min-height: 40px;
+      padding: 6px 12px;
+      font-size: 17px;
+      font-family: var(--body);
+      color: var(--ink);
+      background: var(--card);
+      border: 2px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .custom-time.show { display: block; }
+
+    .note-wrap { position: relative; }
+
+    .note-input {
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 64px 8px 14px;
+      font-size: 16px;
+      font-family: var(--body);
+      color: var(--ink);
+      background: var(--card);
+      border: 2px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .note-input::placeholder { color: #BBA8A3; }
+
+    .note-count {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    /* ---------- 底部送出 ---------- */
+    .submit-wrap { margin-top: 16px; }
+
+    /* ---------- 最近五筆 ---------- */
+    .recent { margin-top: 18px; }
+
+    .recent h2 {
+      font-family: var(--hand);
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+
+    .recent-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      border: 1px solid var(--line);
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .recent-table th,
+    .recent-table td {
+      border: 1px solid var(--line);
+      padding: 6px 10px;
+      text-align: left;
+    }
+
+    .recent-table th {
+      background: #FBE3E9;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .recent-table td.num,
+    .recent-table th.num { text-align: right; }
+
+    .recent-empty {
+      font-size: 14px;
+      color: var(--ink-soft);
+    }
+
+    .submit {
+      appearance: none;
+      width: 100%;
+      min-height: 46px;
+      border: none;
+      border-radius: 16px;
+      background: var(--patch);
+      color: #fff;
+      font-family: var(--hand);
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 0 var(--patch-dark);
+      transition: transform .08s ease, box-shadow .08s ease;
+    }
+
+    .submit:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--patch-dark); }
+
+    .submit[disabled] { opacity: .6; cursor: default; }
+
+    .submit.confirm {
+      background: var(--warn-bg);
+      color: var(--warn-ink);
+      box-shadow: 0 4px 0 #F2C79E;
+      font-size: 18px;
+    }
+
+    /* ---------- 送出結果 ---------- */
+    .toast {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      top: calc(16px + env(safe-area-inset-top));
+      max-width: 448px;
+      margin: 0 auto;
+      background: var(--ink);
+      color: #fff;
+      border-radius: 16px;
+      padding: 14px 18px;
+      font-size: 16px;
+      text-align: center;
+      transform: translateY(-140%);
+      visibility: hidden;
+      transition: transform .25s ease, visibility 0s linear .25s;
+      z-index: 10;
+    }
+
+    .toast.show { transform: translateY(0); visibility: visible; transition: transform .25s ease; }
+    .toast.error { background: var(--err-ink); }
+
+    @keyframes nudge {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+
+    .nudge { animation: nudge .25s ease 2; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    @media (max-width: 350px) {
+      .time-chips { grid-template-columns: repeat(3, 1fr); }
+      .chips.cols-6 { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+
+    <header class="hero">
+      <img src="v3.jpeg" alt="花花">
+      <div class="hero-text" id="heroText" role="button" tabindex="0" aria-label="花花">
+        <canvas class="name-canvas" id="nameCanvas" aria-hidden="true"></canvas>
+      </div>
+      <input type="hidden" id="catName" value="花花">
+    </header>
+
+    <div class="last-feed" id="lastFeed" aria-live="polite">讀取上一餐…</div>
+    <div class="today-stats" id="todayStats" hidden></div>
+
+    <form id="feedForm" novalidate>
+      <fieldset class="field">
+        <legend>誰餵的</legend>
+        <div class="chips cols-4" role="radiogroup" aria-label="餵食者" id="feederChips"></div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend>餵了幾匙</legend>
+        <div class="chips cols-6" role="radiogroup" aria-label="份量" id="amountChips"></div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend>什麼時候餵的</legend>
+        <div class="chips time-chips" role="radiogroup" aria-label="餵食時間" id="timeChips"></div>
+        <input type="datetime-local" class="custom-time" id="customTime" aria-label="自訂餵食時間">
+        <p class="time-result" id="timeResult"></p>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend>吃得怎麼樣</legend>
+        <div class="chips cols-4" role="radiogroup" aria-label="貓咪狀態" id="statusChips"></div>
+      </fieldset>
+
+      <div class="field">
+        <label for="note">備註 <span class="hint">可不填，最多 30 字</span></label>
+        <div class="note-wrap">
+          <input type="text" class="note-input" id="note" maxlength="30" placeholder="例如：有點軟便" autocomplete="off">
+          <span class="note-count" id="noteCount">0/30</span>
+        </div>
+      </div>
+
+      <div class="submit-wrap">
+        <button type="submit" class="submit" id="submitBtn">記錄這一餐</button>
+      </div>
+    </form>
+
+    <section class="recent" aria-labelledby="recentTitle">
+      <h2 id="recentTitle">最近五筆</h2>
+      <table class="recent-table" id="recentTable" hidden>
+        <thead>
+          <tr><th>誰餵的</th><th class="num">餵了幾匙</th><th>日期時間</th></tr>
+        </thead>
+        <tbody id="recentBody"></tbody>
+      </table>
+      <p class="recent-empty" id="recentEmpty">讀取中…</p>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // ====== 設定 ======
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqDG9QaCBfY6guDMgLDR8-CFoMnYVkOyNTEVc1a_0iHQZ6tt8Y8hcTkjMIpdE05EO1/exec'; // 換成部署好的 Web App 網址
+    const MIN_GAP_MIN = 120; // 距上一餐少於這個分鐘數就先提醒
+
+    const FEEDERS = ['爸爸', '媽媽', '睿睿', '葳葳'];
+    const AMOUNTS = [3, 2.5, 2, 1.5, 1, 0.5];
+    const TIMES = [
+      { key: 'now', label: '現在', min: 0 },
+      { key: '15', label: '15 分前', min: 15 },
+      { key: '30', label: '30 分前', min: 30 },
+      { key: '60', label: '1 小時前', min: 60 },
+      { key: 'custom', label: '自訂' }
+    ];
+    const STATUSES = [
+      { value: '食慾良好', emo: '😋', label: '秒殺' },
+      { value: '正常吃完', emo: '🙂', label: '正常吃完' },
+      { value: '挑食/剩食', emo: '😼', label: '挑食剩食' },
+      { value: '食慾不佳', emo: '😿', label: '食慾不佳' }
+    ];
+
+    // ====== 狀態 ======
+    const state = {
+      feeder: load('feeder'),
+      amount: load('amount') !== null ? Number(load('amount')) : null,
+      timeKey: 'now',
+      status: '正常吃完',
+      last: null,
+      confirming: false,
+      sending: false
+    };
+    if (!FEEDERS.includes(state.feeder)) state.feeder = null;
+    if (!AMOUNTS.includes(state.amount)) state.amount = null;
+
+    const $ = id => document.getElementById(id);
+
+    // ====== 小工具 ======
+    function load(k) { try { return localStorage.getItem('huahua.' + k); } catch (e) { return null; } }
+    function save(k, v) { try { localStorage.setItem('huahua.' + k, v); } catch (e) {} }
+    const pad2 = n => String(n).padStart(2, '0');
+    const fmtTime = d => `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    const toLocalInput = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+
+    function fmtGap(ms) {
+      const m = Math.max(0, Math.round(ms / 60000));
+      if (m < 60) return `${m} 分鐘`;
+      const h = Math.floor(m / 60), r = m % 60;
+      return r ? `${h} 小時 ${r} 分` : `${h} 小時`;
+    }
+
+    function feedTime() {
+      if (state.timeKey === 'custom') {
+        const v = $('customTime').value;
+        return v ? new Date(v) : null;
+      }
+      const t = TIMES.find(x => x.key === state.timeKey);
+      return new Date(Date.now() - t.min * 60000);
+    }
+
+    // ====== 按鈕群組 ======
+    function renderChips(container, items, isOn, onPick, build) {
+      container.innerHTML = '';
+      items.forEach(item => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('role', 'radio');
+        b.setAttribute('aria-checked', isOn(item) ? 'true' : 'false');
+        build(b, item);
+        b.addEventListener('click', () => {
+          onPick(item);
+          state.confirming = false;
+          renderAll();
+        });
+        container.appendChild(b);
+      });
+    }
+
+    function renderAll() {
+      renderChips($('feederChips'), FEEDERS, f => f === state.feeder,
+        f => { state.feeder = f; save('feeder', f); },
+        (b, f) => { b.className = 'chip'; b.textContent = f; });
+
+      renderChips($('amountChips'), AMOUNTS, a => a === state.amount,
+        a => { state.amount = a; save('amount', a); },
+        (b, a) => {
+          b.className = 'chip amount';
+          b.innerHTML = `<span class="num">${a}</span><span class="unit">匙</span>`;
+          b.setAttribute('aria-label', `${a} 匙`);
+        });
+
+      renderChips($('timeChips'), TIMES, t => t.key === state.timeKey,
+        t => {
+          state.timeKey = t.key;
+          if (t.key === 'custom' && !$('customTime').value) {
+            $('customTime').value = toLocalInput(new Date());
+          }
+        },
+        (b, t) => { b.className = 'chip'; b.textContent = t.label; });
+
+      renderChips($('statusChips'), STATUSES, s => s.value === state.status,
+        s => { state.status = s.value; },
+        (b, s) => {
+          b.className = 'chip status';
+          b.innerHTML = `<span class="emo" aria-hidden="true">${s.emo}</span><span>${s.label}</span>`;
+        });
+
+      $('customTime').classList.toggle('show', state.timeKey === 'custom');
+      $('customTime').max = toLocalInput(new Date());
+      renderTimeResult();
+      renderSummary();
+      renderLast();
+    }
+
+    function renderTimeResult() {
+      const t = feedTime();
+      $('timeResult').textContent = t ? `記為 ${fmtTime(t)}` : '請選擇時間';
+    }
+
+    function renderSummary() {
+      const btn = $('submitBtn');
+      btn.classList.toggle('confirm', state.confirming);
+      if (!state.confirming && !state.sending) btn.textContent = '記錄這一餐';
+    }
+
+    function renderLast() {
+      const box = $('lastFeed');
+      if (!state.last) return;
+      const t = new Date(state.last.time);
+      const gap = Date.now() - t.getTime();
+      box.classList.toggle('is-recent', gap < MIN_GAP_MIN * 60000);
+
+      const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const st = STATUSES.find(s => s.value === state.last.status);
+      const bad = state.last.status === '挑食/剩食' || state.last.status === '食慾不佳';
+      let statusLine = '';
+      if (st) {
+        statusLine = `<span class="last-status${bad ? ' bad' : ''}">${st.emo} 吃得：${st.label}`;
+        if (state.last.note) statusLine += `・${esc(state.last.note)}`;
+        statusLine += '</span>';
+      } else if (state.last.note) {
+        statusLine = `<span class="last-status">備註：${esc(state.last.note)}</span>`;
+      }
+
+      box.innerHTML = `上一餐 <strong>${fmtTime(t)}</strong>・${esc(state.last.feeder)}・${state.last.amount} 匙` +
+        `<span class="last-row">${statusLine}<span class="ago">${fmtGap(gap)}前</span></span>`;
+    }
+
+    // ====== 今日統計 ======
+    function renderToday(t) {
+      const el = $('todayStats');
+      if (!t) { el.hidden = true; return; }
+      el.innerHTML = `今天 ${t.date} 已餵 <strong>${t.total}</strong> 匙・共 ${t.count} 餐`;
+      el.hidden = false;
+    }
+
+    // ====== 最近五筆 ======
+    function renderRecent(list) {
+      const table = $('recentTable'), body = $('recentBody'), empty = $('recentEmpty');
+      if (!Array.isArray(list)) {
+        table.hidden = true;
+        empty.hidden = false;
+        empty.textContent = '後端尚未更新，請換上新版 Code.gs 並重新部署。';
+        return;
+      }
+      if (!list.length) {
+        table.hidden = true;
+        empty.hidden = false;
+        empty.textContent = '還沒有任何記錄。';
+        return;
+      }
+      body.innerHTML = '';
+      list.slice(0, 5).forEach(r => {
+        const tr = document.createElement('tr');
+        [r.feeder, `${r.amount} 匙`, fmtTime(new Date(r.time))].forEach((v, i) => {
+          const td = document.createElement('td');
+          td.textContent = v;
+          if (i === 1) td.className = 'num';
+          tr.appendChild(td);
+        });
+        body.appendChild(tr);
+      });
+      table.hidden = false;
+      empty.hidden = true;
+    }
+
+    // ====== 讀取上一餐 ======
+    async function fetchLast() {
+      const box = $('lastFeed');
+      if (SCRIPT_URL.startsWith('YOUR_')) {
+        box.textContent = '尚未設定 Apps Script 網址，請先修改程式中的 SCRIPT_URL。';
+        return;
+      }
+      try {
+        const res = await fetch(SCRIPT_URL + '?t=' + Date.now(), { cache: 'no-store' });
+        const data = await res.json();
+        if (data.ok) renderRecent(data.recent);
+        if (data.ok) renderToday(data.today);
+        if (data.ok && data.last) {
+          state.last = data.last;
+          renderLast();
+        } else if (data.ok) {
+          box.textContent = '還沒有任何記錄，這會是第一餐。';
+        } else {
+          box.textContent = `讀不到上一餐：${data.error || '未知錯誤'}`;
+        }
+      } catch (err) {
+        box.textContent = '讀不到上一餐：請檢查網路，重新整理頁面。';
+        $('recentEmpty').textContent = '讀不到記錄：請檢查網路。';
+      }
+    }
+
+    // ====== 送出 ======
+    function toast(msg, isError) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.toggle('error', !!isError);
+      t.classList.add('show');
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => t.classList.remove('show'), isError ? 4000 : 2600);
+    }
+
+    $('feedForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      if (state.sending) return;
+      const btn = $('submitBtn');
+
+      if (!state.feeder || state.amount === null) {
+        const missing = [];
+        if (!state.feeder) missing.push('誰餵的');
+        if (state.amount === null) missing.push('餵了幾匙');
+        toast(`還沒選：${missing.join('、')}`, true);
+        return;
+      }
+
+      const t = feedTime();
+      if (!t || isNaN(t)) { toast('請選擇餵食時間', true); return; }
+      if (t.getTime() > Date.now() + 60000) { toast('餵食時間不能晚於現在', true); return; }
+
+      // 距上一餐太近：第一次按先提醒，再按一次才送出
+      if (state.last && !state.confirming) {
+        const gap = t.getTime() - state.last.time;
+        if (gap >= 0 && gap < MIN_GAP_MIN * 60000) {
+          state.confirming = true;
+          renderSummary();
+          btn.textContent = `距上一餐才 ${fmtGap(gap)}，仍要記錄`;
+          return;
+        }
+      }
+
+      if (SCRIPT_URL.startsWith('YOUR_')) { toast('尚未設定 Apps Script 網址', true); return; }
+
+      const payload = {
+        catName: $('catName').value.trim() || '花花',
+        feeder: state.feeder,
+        amount: state.amount,
+        feedTime: t.getTime(),
+        catStatus: state.status,
+        note: $('note').value.trim().slice(0, 30)
+      };
+
+      state.sending = true;
+      btn.disabled = true;
+      btn.textContent = '記錄中…';
+
+      try {
+        // 不設 Content-Type、不用 no-cors：瀏覽器會以 text/plain 送出，不觸發預檢，也能讀到回應
+        const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || '寫入失敗');
+        if (data.recent) renderRecent(data.recent);
+        renderToday(data.today);
+
+        state.last = data.last || { time: payload.feedTime, feeder: payload.feeder, amount: payload.amount,
+                                    status: payload.catStatus, note: payload.note };
+        toast(`已記錄：${payload.catName}・${payload.feeder}・${payload.amount} 匙`);
+
+        // 保留餵食者與份量（下次通常一樣），其他回到預設
+        state.timeKey = 'now';
+        state.status = '正常吃完';
+        $('note').value = '';
+        $('noteCount').textContent = '0/30';
+      } catch (err) {
+        toast(`沒有記錄成功：${err.message === 'Failed to fetch' ? '請檢查網路' : err.message}，再按一次`, true);
+      } finally {
+        state.sending = false;
+        state.confirming = false;
+        btn.disabled = false;
+        renderAll();
+      }
+    });
+
+    $('customTime').addEventListener('input', () => { state.confirming = false; renderTimeResult(); renderSummary(); });
+    $('note').addEventListener('input', e => { $('noteCount').textContent = `${e.target.value.length}/30`; });
+
+    // 每分鐘更新「幾分鐘前」與「現在」的時間
+    setInterval(() => { renderTimeResult(); renderSummary(); renderLast(); }, 60000);
+
+    renderAll();
+    fetchLast();
+  </script>
+
+  <script>
+    // ====== 粒子名字：散開 → 聚合成字 → 左右平移 ======
+    (function () {
+      const wrap = document.getElementById('heroText');
+      const canvas = document.getElementById('nameCanvas');
+      const ctx = canvas.getContext('2d');
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // 顏色以花花的深棕為主，少量橘色與粉色點綴
+      const COLORS = ['#3A2A24', '#3A2A24', '#3A2A24', '#3A2A24', '#4E372F', '#4E372F', '#F28C38', '#E8798F'];
+      const FONT = '"LXGW WenKai TC", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+      const NAME = '花花';
+      const GAP = 2;             // 取樣間距（px），越小粒子越多
+      const ASSEMBLE_MS = 1300;  // 聚合需要的時間
+      const PERIOD_MS = 6000;    // 左右來回一趟的時間
+
+      let W = 0, H = 0, textW = 0, startAt = 0, raf = 0;
+      let particles = [];
+
+      function sampleText(name) {
+        const off = document.createElement('canvas');
+        off.width = W; off.height = H;
+        const o = off.getContext('2d');
+        let size = Math.min(46, Math.floor(H * 0.6));
+        o.font = `700 ${size}px ${FONT}`;
+        while (o.measureText(name).width > W * 0.8 && size > 16) {
+          size -= 2;
+          o.font = `700 ${size}px ${FONT}`;
+        }
+        textW = o.measureText(name).width;
+        o.textBaseline = 'middle';
+        o.fillStyle = '#000';
+        o.fillText(name, 0, H / 2);
+        const data = o.getImageData(0, 0, W, H).data;
+        const pts = [];
+        for (let y = 0; y < H; y += GAP) {
+          for (let x = 0; x < W; x += GAP) {
+            if (data[(y * W + x) * 4 + 3] > 120) pts.push({ x, y });
+          }
+        }
+        return pts;
+      }
+
+      function setup() {
+        const r = wrap.getBoundingClientRect();
+        W = Math.max(1, Math.floor(r.width));
+        H = Math.max(1, Math.floor(r.height));
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const pts = sampleText(NAME);
+        // 沿用舊粒子的位置，改名時會從原本的字「變形」成新字
+        particles = pts.map((t, i) => {
+          const old = particles[i];
+          return {
+            x: old ? old.x : Math.random() * W,
+            y: old ? old.y : Math.random() * H,
+            vx: old ? old.vx : (Math.random() - 0.5) * 6,
+            vy: old ? old.vy : (Math.random() - 0.5) * 6,
+            tx: t.x,
+            ty: t.y,
+            delay: Math.random() * 450,
+            r: 0.9 + Math.random() * 0.5,
+            ph: Math.random() * Math.PI * 2,
+            c: COLORS[Math.floor(Math.random() * COLORS.length)]
+          };
+        });
+        startAt = performance.now();
+
+        if (reduceMotion) {
+          const base = (W - textW) / 2;
+          particles.forEach(p => { p.x = p.tx + base; p.y = p.ty; });
+          draw();
+          return;
+        }
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(frame);
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        // 依顏色分批畫，減少切換
+        COLORS.forEach(color => {
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          particles.forEach(p => {
+            if (p.c !== color) return;
+            ctx.moveTo(p.x + p.r, p.y);
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          });
+          ctx.fill();
+        });
+      }
+
+      function frame(now) {
+        const t = now - startAt;
+        const base = (W - textW) / 2;
+        const amp = Math.max(0, base - 6);
+        // 聚合完成後，平移幅度慢慢放大
+        const k = Math.min(1, Math.max(0, (t - ASSEMBLE_MS) / 900));
+        const ease = k * k * (3 - 2 * k);
+        const shift = base + amp * ease * Math.sin(Math.max(0, t - ASSEMBLE_MS) / PERIOD_MS * Math.PI * 2);
+
+        particles.forEach(p => {
+          if (t > p.delay) {
+            const shimmer = ease * Math.sin(now / 700 + p.ph) * 0.35;
+            p.vx += (p.tx + shift + shimmer - p.x) * 0.07;
+            p.vy += (p.ty - p.y) * 0.07;
+          }
+          p.vx *= 0.84;
+          p.vy *= 0.84;
+          p.x += p.vx;
+          p.y += p.vy;
+        });
+
+        draw();
+        raf = requestAnimationFrame(frame);
+      }
+
+      // 點到字：從點的位置炸開，再重新聚合
+      function explode(cx, cy) {
+        if (reduceMotion) return;
+        const now = performance.now();
+        particles.forEach(p => {
+          let dx = p.x - cx, dy = p.y - cy;
+          const d = Math.hypot(dx, dy) || 1;
+          dx /= d; dy /= d;
+          const power = 9 + Math.random() * 11;
+          const spin = (Math.random() - 0.5) * 0.8;   // 稍微偏轉，不會炸成正圓
+          p.vx = (dx - dy * spin) * power;
+          p.vy = (dy + dx * spin) * power;
+          p.delay = 300 + Math.random() * 450;       // 先飛散一下才被拉回
+        });
+        startAt = now;
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(frame);
+      }
+
+      wrap.addEventListener('pointerdown', e => {
+        const r = canvas.getBoundingClientRect();
+        explode(e.clientX - r.left, e.clientY - r.top);
+      });
+      wrap.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          explode(W / 2, H / 2);
+        }
+      });
+
+      let resizeTimer = 0;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(setup, 150);
+      });
+
+      setup();
+      // 手寫字型載入後再取樣一次，字形才會是霞鶩文楷
+      if (document.fonts && document.fonts.load) {
+        document.fonts.load(`700 40px "LXGW WenKai TC"`, '花花').then(setup).catch(() => {});
+      }
+    })();
+  </script>
+</body>
+</html>
