@@ -829,7 +829,7 @@
   <!-- ============================================================
        3. Three.js 沉浸式 3D 餵食場景（畫在頂部 hero 裡）
           場景：圓餐桌、飼料碗與貓糧、湯匙、花瓶、飄浮的花、漂浮相片、
-                立在碗後方的名字，加上會投影的主光與暖色補光。
+                立在碗後方的名字、貓跳台、逗貓棒、貓草、鈴鐺球，加上會投影的主光與暖色補光。
           運鏡：選餵食者 → 推向相片；選份量 → 俯看碗內；選時間 → 繞桌遠景；
                 選狀態 → 低角度看名字；過近警告 → 逼近碗＋鏡頭震動＋燈光轉橘紅；
                 記錄成功 → 湯匙舀飼料倒進碗、鏡頭繞場一圈、花朵噴出。
@@ -890,7 +890,7 @@
         scene.add(key);
 
         const warm = new THREE.PointLight(0xFFB070, 7, 9); // 花瓶旁的暖色補光
-        warm.position.set(2.8, 1.7, -0.2);
+        warm.position.set(3.0, 1.8, -0.3);
         scene.add(warm);
 
         // 斜射的光束
@@ -957,7 +957,7 @@
         }
 
         // 掉在桌上的幾顆
-        [[-0.2, 1.9], [1.75, 1.6], [1.5, -0.15], [-0.75, 0.25]].forEach(([x, z], i) => {
+        [[-0.2, 1.9], [0.9, 2.05], [1.5, -0.15], [-0.75, 0.25]].forEach(([x, z], i) => {
           const k = mesh(kibbleGeo, kibbleMats[i % 3]);
           k.position.set(x, 0.09, z);
           k.rotation.set(i, i * 2, 0);
@@ -1006,6 +1006,7 @@
         spoon.add(scoop, handle, spoonFood);
         scene.add(spoon);
 
+        const AXIS_Z = new THREE.Vector3(0, 0, 1), tmpQuat = new THREE.Quaternion();
         const quat = (x, y, z) => new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z));
         const SPOON_REST = { p: new THREE.Vector3(2.0, -0.02, 1.75), q: quat(0, 0.45, 0) };
         const SPOON_OVER = { p: new THREE.Vector3(BOWL_POS.x + 0.1, 1.5, BOWL_POS.z), q: quat(0, 0.2, 0.12) };
@@ -1034,7 +1035,7 @@
 
         // 花瓶 + 三朵花
         const vase = new THREE.Group();
-        vase.position.set(3.0, 0, -0.7);
+        vase.position.set(3.3, 0, -0.9);
         vase.add(mesh(
           new THREE.LatheGeometry([[0, 0], [0.26, 0], [0.36, 0.3], [0.2, 0.62], [0.27, 0.78]].map(p => new THREE.Vector2(p[0], p[1])), 24),
           lambert(0xFFFFFF, { side: THREE.DoubleSide }), true, true
@@ -1079,9 +1080,115 @@
           confetti.push(f);
         }
 
+        // ---------- 貓跳台（左側）：麻繩柱、兩層平台、頂部小窩、掛著會晃的小球 ----------
+        const tree = new THREE.Group();
+        tree.position.set(-3.5, 0, 0.35);
+        const treePink = lambert(0xF6A5B6), treeLight = lambert(0xF9C4D0);
+        const treeBase = mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.08, 28), treePink, true, true);
+        treeBase.position.y = 0.04;
+        const post = mesh(new THREE.CylinderGeometry(0.11, 0.11, 2.0, 12), lambert(0xD9B48A));
+        post.position.y = 1.0;
+        tree.add(treeBase, post);
+        const ropeGeo = new THREE.TorusGeometry(0.115, 0.022, 6, 14);
+        const ropeMat = lambert(0xC29A6B);
+        for (let i = 0; i < 7; i++) {
+          const ring = mesh(ropeGeo, ropeMat, false);
+          ring.rotation.x = Math.PI / 2;
+          ring.position.y = 0.25 + i * 0.1;
+          tree.add(ring);
+        }
+        const midDeck = mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.07, 24), treeLight, true, true);
+        midDeck.position.set(-0.05, 1.05, 0.3);
+        const topDeck = mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.08, 24), treePink, true, true);
+        topDeck.position.y = 2.02;
+        const nest = mesh(new THREE.SphereGeometry(0.4, 18, 12, 0, TAU, 0, Math.PI / 2), treeLight);
+        nest.scale.set(1, 0.8, 0.85);
+        nest.position.y = 2.06;
+        tree.add(midDeck, topDeck, nest);
+        const dangle = new THREE.Group(); // 掛在平台下的小球，繞著掛點擺動
+        dangle.position.set(0.1, 1.02, 0.6);
+        const dangleString = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.36, 5), lambert(0x8A7068), false);
+        dangleString.position.y = -0.18;
+        const dangleBall = mesh(new THREE.SphereGeometry(0.1, 14, 10), lambert(0xFFD27A));
+        dangleBall.position.y = -0.42;
+        dangle.add(dangleString, dangleBall);
+        tree.add(dangle);
+        scene.add(tree);
+
+        // ---------- 逗貓棒（右前方）：斜靠的棒子，線和羽毛垂在桌面上方擺盪 ----------
+        const WAND_BASE = new THREE.Vector3(3.25, 0, 1.15), WAND_TIP = new THREE.Vector3(2.05, 2.15, 0.95);
+        const wandLen = WAND_BASE.distanceTo(WAND_TIP);
+        const wand = new THREE.Group();
+        wand.position.copy(WAND_BASE);
+        const WAND_Q = new THREE.Quaternion().setFromUnitVectors(
+          new THREE.Vector3(0, 1, 0), WAND_TIP.clone().sub(WAND_BASE).normalize());
+        wand.quaternion.copy(WAND_Q);
+        const stick = mesh(new THREE.CylinderGeometry(0.03, 0.045, wandLen, 8), lambert(0xC98A4B));
+        stick.position.y = wandLen / 2;
+        const wandStand = mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.14, 18), lambert(0xF28C9F), true, true);
+        wandStand.position.copy(WAND_BASE).setY(0.07);
+        wand.add(stick);
+        scene.add(wand, wandStand);
+
+        const lure = new THREE.Group(); // 線＋羽毛，掛在棒尖，不跟著棒子傾斜
+        const lureString = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.8, 5), lambert(0x8A7068), false);
+        lureString.position.y = -0.4;
+        const knot = mesh(new THREE.SphereGeometry(0.06, 10, 8), lambert(0x3A2A24));
+        knot.position.y = -0.82;
+        lure.add(lureString, knot);
+        [[0xF28C38, 0.5], [0xF6A5B6, -0.45], [0xFFD27A, 0]].forEach(([color, lean]) => {
+          const feather = mesh(petalGeo, lambert(color));
+          feather.scale.set(0.085, 0.28, 0.03);
+          feather.position.set(Math.sin(lean) * 0.2, -0.86 - Math.cos(lean) * 0.22, 0);
+          feather.rotation.z = lean;
+          lure.add(feather);
+        });
+        scene.add(lure);
+        let lureSwing = 0; // 額外的擺盪力道（記錄成功、點場景時加大）
+
+        // ---------- 貓草（右側一盆）：草葉左右搖 ----------
+        const grass = new THREE.Group();
+        grass.position.set(2.55, 0, -0.35);
+        grass.add(mesh(new THREE.CylinderGeometry(0.34, 0.25, 0.4, 20), lambert(0xE9A98A), true, true));
+        grass.children[0].position.y = 0.2;
+        const soil = mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.02, 20), lambert(0x8A5A3C), false);
+        soil.position.y = 0.4;
+        grass.add(soil);
+        const blades = [];
+        const bladeMats = [0x6FBF6A, 0x8FD27F, 0x58A85A].map(c => lambert(c));
+        for (let i = 0; i < 16; i++) {
+          const h = rand(0.55, 1.0);
+          const pivot = new THREE.Group();
+          const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * 0.22;
+          pivot.position.set(Math.cos(a) * r, 0.4, Math.sin(a) * r);
+          const blade = mesh(new THREE.ConeGeometry(0.04, h, 5), bladeMats[i % 3]);
+          blade.position.y = h / 2;
+          pivot.add(blade);
+          pivot.userData = { leanX: rand(-0.3, 0.3), leanZ: rand(-0.35, 0.35), phase: rand(0, TAU) };
+          grass.add(pivot);
+          blades.push(pivot);
+        }
+        scene.add(grass);
+
+        // ---------- 鈴鐺球（碗的右前方）：偶爾滾一小段，點場景時被彈開 ----------
+        const BALL_R = 0.2, BALL_HOME = new THREE.Vector3(1.5, BALL_R, 1.4);
+        const ball = new THREE.Group();
+        ball.add(mesh(new THREE.SphereGeometry(BALL_R, 18, 14), lambert(0xFFD27A)));
+        const band = mesh(new THREE.TorusGeometry(BALL_R, 0.022, 6, 24), lambert(0xF28C38), false);
+        ball.add(band);
+        const dotGeo = new THREE.SphereGeometry(0.045, 8, 6);
+        const dotMat = lambert(0xFFF7EE);
+        [[1, 1, 1], [-1, 1, -1], [1, -1, -1], [-1, -1, 1], [0, 1, -1], [0, -1, 1]].forEach(v => {
+          const dot = mesh(dotGeo, dotMat, false);
+          dot.position.set(v[0], v[1], v[2]).normalize().multiplyScalar(BALL_R * 0.96);
+          ball.add(dot);
+        });
+        scene.add(ball);
+        let ballKick = 0;
+
         // ---------- 漂浮相片 ----------
         const photo = new THREE.Group();
-        const PHOTO_BASE = new THREE.Vector3(-2.65, 1.52, -0.3);
+        const PHOTO_BASE = new THREE.Vector3(-2.05, 1.52, -0.6);
         const PHOTO_H = 1.75;
         photo.position.copy(PHOTO_BASE);
         const frame = mesh(new THREE.BoxGeometry(1, 1, 0.06), lambert(0xFFFFFF));
@@ -1158,10 +1265,10 @@
 
         // ---------- 運鏡 ----------
         // az：水平繞行角、el：仰角、d：距離倍率、at：看向哪裡、hold：停留毫秒、sweep：停留期間額外繞行的角度
-        const LOOK_CENTER = [0.15, 1.0, 0];
+        const LOOK_CENTER = [-0.1, 1.0, 0];
         const IDLE = { az: 0, el: 0.34, d: 1, at: LOOK_CENTER, speed: 0.0025 };
         const SHOTS = {
-          feeder:  { az: -0.42, el: 0.2,  d: 0.66, at: [-1.7, 1.25, 0],            hold: 2200, speed: 0.004 },
+          feeder:  { az: -0.42, el: 0.2,  d: 0.66, at: [-1.5, 1.25, 0],            hold: 2200, speed: 0.004 },
           amount:  { az: 0.2,   el: 0.92, d: 0.56, at: [BOWL_POS.x, 0.35, BOWL_POS.z], hold: 2400, speed: 0.005 },
           time:    { az: 0,     el: 0.28, d: 1.04, at: LOOK_CENTER, sweep: 0.9,    hold: 2600, speed: 0.003 },
           status:  { az: 0.05,  el: 0.08, d: 0.6,  at: [BOWL_POS.x, 1.3, -0.9],    hold: 2200, speed: 0.004 },
@@ -1169,7 +1276,7 @@
           success: { az: 0,     el: 0.46, d: 0.8,  at: [0.3, 0.8, 0.2], sweep: 1.5, hold: 3000, speed: 0.004 },
           tap:     { az: 0,     el: 0.5,  d: 0.9,  at: LOOK_CENTER, sweep: 2.2,    hold: 2600, speed: 0.004 }
         };
-        const cam = { az: 0.9, el: 0.75, d: 1.5, x: 0.15, y: 0.85, z: 0 }; // 開場從斜上方拉近
+        const cam = { az: 0.9, el: 0.75, d: 1.5, x: -0.1, y: 0.85, z: 0 }; // 開場從斜上方拉近
         let shot = null, shotAge = 0, baseDist = 8;
         let pointerX = 0, pointerSmooth = 0;
 
@@ -1211,9 +1318,9 @@
           renderer.setSize(W, H, false);
           camera.aspect = W / H;
           camera.updateProjectionMatrix();
-          // 讓整張場景（寬約 7.6、高約 3.7）剛好裝進畫面
+          // 讓整張場景（寬約 8、高約 3.7）剛好裝進畫面
           const tan = Math.tan(FOV * Math.PI / 360);
-          baseDist = Math.max(7.6 / (2 * tan * camera.aspect), 3.7 / (2 * tan)) * 1.04;
+          baseDist = Math.max(8.0 / (2 * tan * camera.aspect), 3.7 / (2 * tan)) * 1.04;
         }
 
         function update(now, dt) {
@@ -1247,6 +1354,28 @@
             f.rotation.y += d.ry * sec;
           });
           beam.material.opacity = 0.09 + Math.sin(t / 2100) * 0.03;
+
+          // --- 貓跳台小球、逗貓棒、貓草、鈴鐺球 ---
+          dangle.rotation.z = Math.sin(t / 620) * 0.45;
+          dangle.rotation.x = Math.sin(t / 830) * 0.2;
+
+          lureSwing = Math.max(0, lureSwing - sec * 0.55);
+          const wandBend = Math.sin(t / 1300) * 0.035 + Math.sin(t / 190) * 0.05 * lureSwing;
+          wand.quaternion.copy(WAND_Q).multiply(tmpQuat.setFromAxisAngle(AXIS_Z, wandBend));
+          lure.position.set(0, wandLen, 0).applyQuaternion(wand.quaternion).add(WAND_BASE);
+          lure.rotation.z = Math.sin(t / 700) * (0.3 + 0.9 * lureSwing);
+          lure.rotation.x = Math.sin(t / 930) * (0.15 + 0.5 * lureSwing);
+          lure.rotation.y += sec * 0.8;
+
+          blades.forEach(b => {
+            const d = b.userData;
+            b.rotation.set(d.leanX + Math.sin(t / 1000 + d.phase) * 0.07, 0, d.leanZ + Math.sin(t / 800 + d.phase) * 0.14);
+          });
+
+          ballKick = Math.max(0, ballKick - sec * 0.7);
+          const roll = Math.sin(t / 1700) * 0.3 + Math.sin(ballKick * Math.PI * 2.5) * ballKick * 0.9;
+          ball.position.set(BALL_HOME.x + roll, BALL_R + Math.abs(Math.sin(ballKick * Math.PI * 3)) * ballKick * 0.5, BALL_HOME.z);
+          ball.rotation.z = -roll / BALL_R;
 
           // --- 過近警告：碗搖晃、主光轉橘紅 ---
           let warn = 0;
@@ -1360,7 +1489,7 @@
         }
 
         window.addEventListener('pointermove', e => { pointerX = (e.clientX / window.innerWidth) * 2 - 1; }, { passive: true });
-        canvas.addEventListener('click', () => { focus('tap'); nameHop = 1; });
+        canvas.addEventListener('click', () => { focus('tap'); nameHop = 1; ballKick = 1; lureSwing = 1; });
 
         // 等手寫字型載好再做名字（最多等 1.5 秒）
         const fontReady = document.fonts && document.fonts.load
@@ -1380,6 +1509,8 @@
           // withKibble：這一餐有貓糧才播放湯匙倒飼料；只吃罐罐就讓罐罐跳一下
           feedBowl(withKibble) {
             focus('success');
+            lureSwing = 1;
+            ballKick = 1;
             if (withKibble === false) {
               canHop = 1;
               burstConfetti();
