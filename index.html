@@ -812,9 +812,10 @@
   </script>
 
   <!-- ============================================================
-       3. Three.js 動態層
-          - 背景：全螢幕漂浮小圓點（在內容後面）
-          - 頂部：粒子組成的「花花」＋ 飼料碗（畫在 hero 裡）
+       3. Three.js 3D 動態層（透視相機 + 燈光，物件真的在 3D 空間裡轉）
+          - 背景：立體小花、圓環、飼料粒在空間中翻滾飄落，遠近有大小差
+          - 頂部：有厚度的粒子「花花」左右轉動 ＋ 會旋轉、裝著飼料粒的碗
+          - 手指或滑鼠移動時，視角會跟著偏移
           沒有 WebGL、Three.js 沒載到或使用者關閉動態時，名字會以一般文字顯示。
        ============================================================ -->
   <script>
@@ -830,50 +831,86 @@
       const NAME = $('catName').value || '花花';
       const smooth = k => k * k * (3 - 2 * k);
       const clamp01 = v => Math.min(1, Math.max(0, v));
+      const rand = (a, b) => a + Math.random() * (b - a);
 
-      // ---------- 背景：漂浮小圓點 ----------
+      // 相機距離：讓 z=0 平面上的 1 單位剛好等於 1 個 CSS 像素
+      const fitDistance = (height, fov) => (height / 2) / Math.tan(fov * Math.PI / 360);
+
+      // 指標位置（-1 ~ 1），用來做視角偏移
+      const pointer = { x: 0, y: 0, sx: 0, sy: 0 };
+      window.addEventListener('pointermove', e => {
+        pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+        pointer.y = (e.clientY / window.innerHeight) * 2 - 1;
+      }, { passive: true });
+
+      function addLights(scene) {
+        scene.add(new THREE.AmbientLight(0xffffff, 1.7));
+        const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+        sun.position.set(-0.5, 1, 1.2);
+        scene.add(sun);
+      }
+
+      // ---------- 背景：在 3D 空間翻滾飄落的小物件 ----------
       function createBackground() {
+        const FOV = 50;
         const renderer = new THREE.WebGLRenderer({ canvas: $('threeCanvas'), alpha: true, antialias: true });
         renderer.setPixelRatio(DPR);
         const scene = new THREE.Scene();
-        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 1000);
-        camera.position.z = 500;
-        let w = 1, h = 1;
+        const camera = new THREE.PerspectiveCamera(FOV, 1, 10, 5000);
+        addLights(scene);
+        let w = 1, h = 1, dist = 1;
 
-        function dotTexture(color) {
-          const c = document.createElement('canvas');
-          c.width = c.height = 64;
-          const cx = c.getContext('2d');
-          cx.fillStyle = color;
-          cx.beginPath();
-          cx.arc(32, 32, 30, 0, Math.PI * 2);
-          cx.fill();
-          return new THREE.CanvasTexture(c);
+        const lambert = color => new THREE.MeshLambertMaterial({ color, transparent: true, opacity: 0.85 });
+        const petalGeo = new THREE.SphereGeometry(1, 12, 8);
+        const ringGeo = new THREE.TorusGeometry(0.8, 0.28, 10, 24);
+        const kibbleGeo = new THREE.IcosahedronGeometry(0.8, 0);
+        const yellow = lambert(0xFFD27A);
+
+        function makeFlower(color) {
+          const g = new THREE.Group();
+          const mat = lambert(color);
+          for (let i = 0; i < 5; i++) {
+            const a = i / 5 * Math.PI * 2;
+            const petal = new THREE.Mesh(petalGeo, mat);
+            petal.scale.set(0.55, 0.55, 0.24);
+            petal.position.set(Math.cos(a) * 0.62, Math.sin(a) * 0.62, 0);
+            g.add(petal);
+          }
+          const center = new THREE.Mesh(petalGeo, yellow);
+          center.scale.setScalar(0.36);
+          g.add(center);
+          return g;
         }
 
-        const materials = ['#F6A5B6', '#FDE4EA', '#FFD27A'].map(color =>
-          new THREE.SpriteMaterial({ map: dotTexture(color), transparent: true, opacity: 0.45, depthWrite: false }));
+        const makers = [
+          () => makeFlower(0xF6A5B6),
+          () => makeFlower(0xFFFFFF),
+          () => new THREE.Mesh(ringGeo, lambert(0xF9B98A)),
+          () => makeFlower(0xF6A5B6),
+          () => { const m = new THREE.Mesh(kibbleGeo, lambert(0xD9A066)); m.material.flatShading = true; return m; }
+        ];
 
-        const floaters = [];
-        for (let i = 0; i < 20; i++) {
-          const s = new THREE.Sprite(materials[i % materials.length]);
-          const size = 10 + Math.random() * 18; // 直徑（px）
-          s.scale.set(size, size, 1);
-          s.userData = {
-            u: Math.random(),                 // 水平位置 0~1
-            v: Math.random(),                 // 垂直位置 0~1
-            speed: 6 + Math.random() * 12,    // 下飄速度（px/秒）
-            amp: 6 + Math.random() * 14,      // 左右擺幅（px）
-            phase: Math.random() * Math.PI * 2
+        const items = [];
+        for (let i = 0; i < 18; i++) {
+          const obj = makers[i % makers.length]();
+          obj.scale.setScalar(rand(9, 17));
+          obj.rotation.set(rand(0, 6.28), rand(0, 6.28), rand(0, 6.28));
+          obj.userData = {
+            u: Math.random(), v: Math.random(),
+            z: rand(-420, 140),               // 深度：越遠越小
+            speed: rand(8, 20),               // 下飄速度（px/秒）
+            amp: rand(8, 22), phase: rand(0, 6.28),
+            rx: rand(-0.9, 0.9), ry: rand(-1.2, 1.2), rz: rand(-0.6, 0.6) // 翻滾速度（弧度/秒）
           };
-          scene.add(s);
-          floaters.push(s);
+          scene.add(obj);
+          items.push(obj);
         }
 
         function resize() {
           w = window.innerWidth; h = window.innerHeight;
           renderer.setSize(w, h, false);
-          camera.left = -w / 2; camera.right = w / 2; camera.top = h / 2; camera.bottom = -h / 2;
+          dist = fitDistance(h, FOV);
+          camera.aspect = w / h;
           camera.updateProjectionMatrix();
         }
         resize();
@@ -881,52 +918,63 @@
 
         return {
           update(now, dt) {
-            floaters.forEach(s => {
-              const d = s.userData;
-              d.v -= d.speed * dt / 1000 / h;
-              if (d.v < -0.05) d.v = 1.05;
-              s.position.set((d.u - 0.5) * w + Math.sin(now * 0.0006 + d.phase) * d.amp, (d.v - 0.5) * h, 0);
+            const sec = dt / 1000;
+            items.forEach(obj => {
+              const d = obj.userData;
+              d.v -= d.speed * sec / h;
+              if (d.v < -0.12) d.v = 1.12;
+              // 遠的物件在畫面上會往中間縮，所以把分佈範圍依深度放大
+              const spread = (dist - d.z) / dist;
+              obj.position.set(
+                ((d.u - 0.5) * w + Math.sin(now * 0.0006 + d.phase) * d.amp) * spread,
+                (d.v - 0.5) * h * spread,
+                d.z
+              );
+              obj.rotation.x += d.rx * sec;
+              obj.rotation.y += d.ry * sec;
+              obj.rotation.z += d.rz * sec;
             });
+            camera.position.set(pointer.sx * 40, -pointer.sy * 30, dist);
+            camera.lookAt(0, 0, 0);
             renderer.render(scene, camera);
           }
         };
       }
 
-      // ---------- 頂部：粒子名字 + 飼料碗 ----------
+      // ---------- 頂部：立體粒子名字 + 飼料碗 ----------
       function createHero() {
+        const FOV = 30;
         const heroText = $('heroText');
         const renderer = new THREE.WebGLRenderer({ canvas: $('heroCanvas'), alpha: true, antialias: true });
         renderer.setPixelRatio(DPR);
         const scene = new THREE.Scene();
-        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 1000);
-        camera.position.z = 400;
-
-        scene.add(new THREE.AmbientLight(0xffffff, 2.2));
-        const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-        sun.position.set(-60, 120, 200);
-        scene.add(sun);
+        const camera = new THREE.PerspectiveCamera(FOV, 1, 10, 3000);
+        addLights(scene);
 
         let W = 0, H = 0;
 
-        // --- 名字 ---
-        const GAP = 2; // 取樣間距（px），越小粒子越密
-        const COLORS = [0x3A2A24, 0x3A2A24, 0x3A2A24, 0x3A2A24, 0x4E372F, 0x4E372F, 0xF28C38, 0xE8798F]
-          .map(hex => new THREE.Color(hex));
+        // --- 名字：把文字取樣成點，再往後疊幾層做出厚度 ---
+        const GAP = 2;        // 取樣間距（px），越小粒子越密
+        const LAYERS = 5;     // 厚度的層數
+        const DEPTH = 16;     // 總厚度（px）
+        const FRONT = [0x3A2A24, 0x3A2A24, 0x3A2A24, 0x4E372F, 0x4E372F, 0xF28C38, 0xE8798F].map(c => new THREE.Color(c));
+        const SIDE = [0xD9711F, 0xF28C38, 0xE8798F].map(c => new THREE.Color(c)); // 側面用橘、粉色
+        const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
         const nameGroup = new THREE.Group();
         scene.add(nameGroup);
-        const nameMat = new THREE.PointsMaterial({ size: 2.6, vertexColors: true, sizeAttenuation: false });
+        const nameMat = new THREE.PointsMaterial({ size: 2.4, vertexColors: true, sizeAttenuation: false });
         let namePoints = null;
         let particles = [];
         let introStart = null;
 
-        // 把文字畫到隱藏的 canvas，再取出有顏色的像素當作粒子的目標位置
         function sampleText(text, w, h) {
           const off = document.createElement('canvas');
           off.width = w; off.height = h;
           const o = off.getContext('2d', { willReadFrequently: true });
-          let size = Math.min(52, Math.floor(h * 0.5));
+          let size = Math.min(50, Math.floor(h * 0.48));
           o.font = `700 ${size}px ${FONT}`;
-          while (o.measureText(text).width > w * 0.92 && size > 14) { size -= 2; o.font = `700 ${size}px ${FONT}`; }
+          while (o.measureText(text).width > w * 0.82 && size > 14) { size -= 2; o.font = `700 ${size}px ${FONT}`; }
           o.textAlign = 'center';
           o.textBaseline = 'middle';
           o.fillStyle = '#000';
@@ -943,26 +991,28 @@
 
         function buildName(areaW, scatter) {
           if (namePoints) { nameGroup.remove(namePoints); namePoints.geometry.dispose(); }
-          const pts = sampleText(NAME, areaW, H);
-          const pos = new Float32Array(pts.length * 3);
-          const col = new Float32Array(pts.length * 3);
-          particles = pts.map((pt, i) => {
-            const c = COLORS[Math.floor(Math.random() * COLORS.length)];
-            col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
-            const tz = (Math.random() - 0.5) * 10;
-            return {
-              x: scatter ? (Math.random() - 0.5) * W * 1.4 : pt.x,
-              y: scatter ? (Math.random() - 0.5) * H * 1.6 : pt.y,
-              z: scatter ? (Math.random() - 0.5) * 120 : tz,
-              tx: pt.x, ty: pt.y, tz,
-              vx: 0, vy: 0, vz: 0,
-              delay: scatter ? Math.random() * 500 : 0,
-              ph: Math.random() * Math.PI * 2
-            };
-          });
+          const flat = sampleText(NAME, areaW, H);
+          particles = [];
+          const colors = [];
+          for (let layer = 0; layer < LAYERS; layer++) {
+            const tz = (layer / (LAYERS - 1) - 0.5) * DEPTH;
+            const front = layer === LAYERS - 1;
+            flat.forEach(pt => {
+              const c = pick(front ? FRONT : SIDE);
+              colors.push(c.r, c.g, c.b);
+              particles.push({
+                x: scatter ? rand(-0.7, 0.7) * W : pt.x,
+                y: scatter ? rand(-0.8, 0.8) * H : pt.y,
+                z: scatter ? rand(-120, 120) : tz,
+                tx: pt.x, ty: pt.y, tz,
+                vx: 0, vy: 0, vz: 0,
+                delay: scatter ? Math.random() * 500 : 0
+              });
+            });
+          }
           const geo = new THREE.BufferGeometry();
-          geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-          geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+          geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(particles.length * 3), 3));
+          geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
           namePoints = new THREE.Points(geo, nameMat);
           namePoints.frustumCulled = false;
           nameGroup.add(namePoints);
@@ -971,14 +1021,15 @@
         // --- 飼料碗 ---
         const bowlGroup = new THREE.Group();
         scene.add(bowlGroup);
-        const tilt = new THREE.Group(); // 往前傾，看得到碗口
-        tilt.rotation.x = 0.5;
+        const tilt = new THREE.Group();    // 往前傾，看得到碗口
         bowlGroup.add(tilt);
+        const spinner = new THREE.Group(); // 繞著碗的中心軸慢慢轉
+        tilt.add(spinner);
 
         const BOWL_BOTTOM_Y = -14, BOWL_TOP_Y = 10, BOWL_BOTTOM_R = 15, BOWL_TOP_R = 30;
         const bowlRadiusAt = y => BOWL_BOTTOM_R + (y - BOWL_BOTTOM_Y) / (BOWL_TOP_Y - BOWL_BOTTOM_Y) * (BOWL_TOP_R - BOWL_BOTTOM_R);
 
-        tilt.add(new THREE.Mesh(
+        spinner.add(new THREE.Mesh(
           new THREE.LatheGeometry([
             new THREE.Vector2(0, BOWL_BOTTOM_Y),
             new THREE.Vector2(BOWL_BOTTOM_R, BOWL_BOTTOM_Y),
@@ -993,14 +1044,26 @@
         );
         rim.rotation.x = Math.PI / 2;
         rim.position.y = BOWL_TOP_Y;
-        tilt.add(rim);
+        spinner.add(rim);
 
-        const food = new THREE.Mesh(
-          new THREE.SphereGeometry(1, 14, 8),
-          new THREE.MeshLambertMaterial({ color: 0xB9763F, flatShading: true })
-        );
-        food.visible = false;
-        tilt.add(food);
+        // 飼料粒：由下往上排好，份量越多顯示越多顆
+        const KIBBLE_COUNT = 48;
+        const kibbleGeo = new THREE.IcosahedronGeometry(3.4, 0);
+        const kibbleMats = [0xB9763F, 0xD08F52, 0x9C5F30].map(color => new THREE.MeshLambertMaterial({ color, flatShading: true }));
+        const kibbles = [];
+        for (let i = 0; i < KIBBLE_COUNT; i++) {
+          const level = (i + 1) / KIBBLE_COUNT;
+          const y = -10 + 17 * level;
+          const r = (bowlRadiusAt(y) - 4.5) * Math.sqrt(Math.random());
+          const a = Math.random() * Math.PI * 2;
+          const k = new THREE.Mesh(kibbleGeo, kibbleMats[i % kibbleMats.length]);
+          k.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+          k.rotation.set(rand(0, 6.28), rand(0, 6.28), 0);
+          k.visible = false;
+          k.userData.level = level;
+          spinner.add(k);
+          kibbles.push(k);
+        }
 
         const spoon = new THREE.Group();
         const spoonMat = new THREE.MeshLambertMaterial({ color: 0xD9711F });
@@ -1018,12 +1081,7 @@
         const SHAKE_MS = 700, FEED_MS = 900, MAX_AMOUNT = Math.max(...AMOUNTS);
 
         function applyFood() {
-          food.visible = foodLevel > 0.01;
-          if (!food.visible) return;
-          const y = -9 + 15 * foodLevel;
-          const r = bowlRadiusAt(y) - 1.5;
-          food.position.y = y;
-          food.scale.set(r, 3 + 5 * foodLevel, r);
+          kibbles.forEach(k => { k.visible = foodLevel > 0.02 && k.userData.level <= foodLevel + 0.001; });
         }
 
         // --- 版面：跟著 hero 文字區的大小調整 ---
@@ -1033,7 +1091,8 @@
           const first = W === 0;
           W = w; H = h;
           renderer.setSize(W, H, false);
-          camera.left = -W / 2; camera.right = W / 2; camera.top = H / 2; camera.bottom = -H / 2;
+          camera.aspect = W / H;
+          camera.position.set(0, 0, fitDistance(H, FOV));
           camera.updateProjectionMatrix();
 
           // 夠寬才放碗：名字在左、碗在右
@@ -1054,38 +1113,46 @@
           if (introStart === null) introStart = now;
           const t = now - introStart;
 
-          // 名字：散開 → 聚合 → 輕輕擺動
+          // 名字：從空間四散 → 聚合成字 → 整塊左右轉，看得到側面厚度
           const ease = smooth(clamp01((t - 900) / 900));
-          const sway = Math.sin(Math.max(0, t - 900) / 6000 * Math.PI * 2) * 4 * ease;
-          nameGroup.rotation.y = Math.sin(t / 2600) * 0.3 * ease;
+          nameGroup.rotation.y = (Math.sin(t / 1700) * 0.6 + pointer.sx * 0.35) * ease;
+          nameGroup.rotation.x = (Math.sin(t / 2300) * 0.14 + pointer.sy * 0.15) * ease;
           if (namePoints) {
             const positions = namePoints.geometry.attributes.position;
-            particles.forEach((p, i) => {
+            for (let i = 0; i < particles.length; i++) {
+              const p = particles[i];
               if (t > p.delay) {
-                p.vx += (p.tx + sway + Math.sin(t / 700 + p.ph) * 0.8 - p.x) * 0.05;
+                p.vx += (p.tx - p.x) * 0.05;
                 p.vy += (p.ty - p.y) * 0.05;
                 p.vz += (p.tz - p.z) * 0.05;
               }
               p.vx *= 0.84; p.vy *= 0.84; p.vz *= 0.84;
               p.x += p.vx; p.y += p.vy; p.z += p.vz;
               positions.setXYZ(i, p.x, p.y, p.z);
-            });
+            }
             positions.needsUpdate = true;
           }
 
-          // 飼料高度：平滑追上目標
+          // 飼料量：平滑追上目標，飼料粒一顆顆出現
           if (Math.abs(foodTarget - foodLevel) > 0.001) {
-            foodLevel += (foodTarget - foodLevel) * Math.min(1, dt * 0.012);
+            foodLevel += (foodTarget - foodLevel) * Math.min(1, dt * 0.008);
             applyFood();
           }
 
-          let scale = 1 + Math.sin(t * 0.002) * 0.012; // 輕微呼吸
+          // 碗：自轉 + 輕微晃動
+          spinner.rotation.y += dt * 0.0009;
+          tilt.rotation.x = 0.55 + Math.sin(t / 1500) * 0.1 + pointer.sy * 0.15;
+          tilt.rotation.z = Math.sin(t / 1900) * 0.07;
+
+          let scale = 1;
           let offsetX = 0;
 
           // 距上一餐太近：碗左右搖
           if (shakeLeft > 0) {
             shakeLeft = Math.max(0, shakeLeft - dt);
-            offsetX = Math.sin((SHAKE_MS - shakeLeft) * 0.03) * 5 * (shakeLeft / SHAKE_MS);
+            const s = Math.sin((SHAKE_MS - shakeLeft) * 0.03) * (shakeLeft / SHAKE_MS);
+            offsetX = s * 5;
+            tilt.rotation.z += s * 0.35;
           }
 
           // 記錄成功：湯匙伸進來倒飼料，碗彈一下
@@ -1098,7 +1165,7 @@
             spoon.rotation.z = -1.1 * dip;
             if (k > 0.45) {
               const b = (k - 0.45) / 0.55;
-              scale += Math.sin(b * Math.PI * 3) * 0.07 * (1 - b);
+              scale += Math.sin(b * Math.PI * 3) * 0.08 * (1 - b);
             }
           }
 
@@ -1147,6 +1214,8 @@
         requestAnimationFrame(frame);
         const dt = Math.min(50, now - prev);
         prev = now;
+        pointer.sx += (pointer.x - pointer.sx) * 0.06;
+        pointer.sy += (pointer.y - pointer.sy) * 0.06;
         if (background) background.update(now, dt);
         if (hero) hero.update(now, dt);
       }
