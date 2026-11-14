@@ -162,6 +162,7 @@
 
     /* ---------- 欄位 ---------- */
     .field { margin-top: 12px; border: none; }
+    .field[hidden] { display: none; }
 
     .field > legend,
     .field > label {
@@ -182,7 +183,7 @@
 
     .chips { display: grid; gap: 8px; }
     .chips.cols-4 { grid-template-columns: repeat(4, 1fr); }
-    .chips.cols-6 { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+    .chips.cols-3 { grid-template-columns: repeat(3, 1fr); }
 
     .chip {
       appearance: none;
@@ -400,7 +401,6 @@
 
     @media (max-width: 350px) {
       .time-chips { grid-template-columns: repeat(3, 1fr); }
-      .chips.cols-6 { grid-template-columns: repeat(3, 1fr); }
     }
   </style>
 </head>
@@ -424,8 +424,13 @@
       </fieldset>
 
       <fieldset class="field">
-        <legend>餵了幾匙</legend>
-        <div class="chips cols-6" role="radiogroup" aria-label="份量" id="amountChips"></div>
+        <legend>吃什麼</legend>
+        <div class="chips cols-3" role="radiogroup" aria-label="食物種類" id="foodChips"></div>
+      </fieldset>
+
+      <fieldset class="field" id="amountField">
+        <legend>貓糧幾匙</legend>
+        <div class="chips cols-3" role="radiogroup" aria-label="貓糧份量" id="amountChips"></div>
       </fieldset>
 
       <fieldset class="field">
@@ -457,7 +462,7 @@
       <h2 id="recentTitle">最近五筆</h2>
       <table class="recent-table" id="recentTable" hidden>
         <thead>
-          <tr><th>誰餵的</th><th class="num">餵了幾匙</th><th>日期時間</th></tr>
+          <tr><th>誰餵的</th><th>吃了什麼</th><th>日期時間</th></tr>
         </thead>
         <tbody id="recentBody"></tbody>
       </table>
@@ -477,7 +482,13 @@
     const NOTE_MAX = 30;
 
     const FEEDERS = ['爸爸', '媽媽', '睿睿', '葳葳'];
-    const AMOUNTS = [3, 2.5, 2, 1.5, 1, 0.5];
+    const AMOUNTS = [1, 2, 3]; // 貓糧幾匙
+    const DEFAULT_FOOD = '貓糧';
+    const FOODS = [
+      { value: '貓糧', emo: '🥣', label: '貓糧' },
+      { value: '罐罐', emo: '🥫', label: '罐罐' },
+      { value: '貓糧+罐罐', emo: '🥣🥫', label: '貓糧＋罐罐' }
+    ];
     const TIMES = [
       { key: 'now', label: '現在', min: 0 },
       { key: '15', label: '15 分前', min: 15 },
@@ -506,6 +517,14 @@
     const toMs = v => new Date(v).getTime(); // 後端回傳數字或日期字串都能處理
     const cue = name => { if (window.__huahua3d) window.__huahua3d.focus(name); }; // 通知 3D 場景切換運鏡
 
+    // 食物種類：罐罐固定一罐、不記數量；有貓糧才需要選幾匙
+    const hasKibble = food => food !== '罐罐';
+    const hasCan = food => food === '罐罐' || food === '貓糧+罐罐';
+    function mealText(food, amount) { // 舊記錄沒有食物種類，一律當作貓糧
+      if (food === '罐罐') return '罐罐';
+      return food === '貓糧+罐罐' ? `${amount} 匙＋罐罐` : `${amount} 匙`;
+    }
+
     function fmtGap(ms) {
       const m = Math.max(0, Math.round(ms / 60000));
       if (m < 60) return `${m} 分鐘`;
@@ -517,6 +536,7 @@
     const savedAmount = load('amount');
     const state = {
       feeder: load('feeder'),
+      food: load('food') || DEFAULT_FOOD,
       amount: savedAmount !== null ? Number(savedAmount) : null,
       timeKey: 'now',
       status: DEFAULT_STATUS,
@@ -525,6 +545,7 @@
       sending: false
     };
     if (!FEEDERS.includes(state.feeder)) state.feeder = null;
+    if (!FOODS.some(f => f.value === state.food)) state.food = DEFAULT_FOOD;
     if (!AMOUNTS.includes(state.amount)) state.amount = null;
 
     function feedTime() {
@@ -559,6 +580,15 @@
         f => { state.feeder = f; save('feeder', f); cue('feeder'); },
         (b, f) => { b.className = 'chip'; b.textContent = f; });
 
+      renderChips($('foodChips'), FOODS, f => f.value === state.food,
+        f => { state.food = f.value; save('food', f.value); cue('amount'); },
+        (b, f) => {
+          b.className = 'chip status';
+          b.innerHTML = `<span class="emo" aria-hidden="true">${f.emo}</span><span>${f.label}</span>`;
+        });
+
+      // 只吃罐罐時不用選幾匙
+      $('amountField').hidden = !hasKibble(state.food);
       renderChips($('amountChips'), AMOUNTS, a => a === state.amount,
         a => { state.amount = a; save('amount', a); cue('amount'); },
         (b, a) => {
@@ -590,8 +620,11 @@
       renderSubmit();
       renderLast();
 
-      // 3D 場景：份量變更時更新碗裡的飼料量
-      if (window.__huahua3d) window.__huahua3d.updateFood(state.amount || 0);
+      // 3D 場景：更新碗裡的飼料量，以及桌上要不要放罐罐
+      if (window.__huahua3d) {
+        window.__huahua3d.updateFood(hasKibble(state.food) ? state.amount || 0 : 0);
+        window.__huahua3d.setCan(hasCan(state.food));
+      }
     }
 
     function renderTimeResult() {
@@ -623,14 +656,14 @@
         statusLine = `<span class="last-status">備註：${esc(state.last.note)}</span>`;
       }
 
-      box.innerHTML = `上一餐 <strong>${fmtTime(t)}</strong>・${esc(state.last.feeder)}・${esc(state.last.amount)} 匙` +
+      box.innerHTML = `上一餐 <strong>${fmtTime(t)}</strong>・${esc(state.last.feeder)}・${esc(mealText(state.last.food, state.last.amount))}` +
         `<span class="last-row">${statusLine}<span class="ago">${fmtGap(gap)}前</span></span>`;
     }
 
     function renderToday(t) {
       const el = $('todayStats');
       if (!t) { el.hidden = true; return; }
-      el.innerHTML = `今天 ${esc(t.date)} 已餵 <strong>${esc(t.total)}</strong> 匙・共 ${esc(t.count)} 餐`;
+      el.innerHTML = `今天 ${esc(t.date)} 已餵 <strong>${esc(t.total)}</strong> 匙${t.can ? '・有吃罐罐' : ''}・共 ${esc(t.count)} 餐`;
       el.hidden = false;
     }
 
@@ -647,10 +680,9 @@
       body.innerHTML = '';
       list.slice(0, 5).forEach(r => {
         const tr = document.createElement('tr');
-        [r.feeder, `${r.amount} 匙`, fmtTime(new Date(r.time))].forEach((v, i) => {
+        [r.feeder, mealText(r.food, r.amount), fmtTime(new Date(r.time))].forEach(v => {
           const td = document.createElement('td');
           td.textContent = v;
-          if (i === 1) td.className = 'num';
           tr.appendChild(td);
         });
         body.appendChild(tr);
@@ -705,7 +737,8 @@
 
       const missing = [];
       if (!state.feeder) missing.push('誰餵的');
-      if (state.amount === null) missing.push('餵了幾匙');
+      const kibble = hasKibble(state.food);
+      if (kibble && state.amount === null) missing.push('貓糧幾匙');
       if (missing.length) { toast(`還沒選：${missing.join('、')}`, true); return; }
 
       const t = feedTime();
@@ -729,7 +762,8 @@
       const payload = {
         catName: $('catName').value.trim() || '花花',
         feeder: state.feeder,
-        amount: state.amount,
+        food: state.food,
+        amount: kibble ? state.amount : 0, // 只吃罐罐時不記匙數
         feedTime: t.getTime(),
         catStatus: state.status,
         note: $('note').value.trim().slice(0, NOTE_MAX)
@@ -747,18 +781,18 @@
         if (data.recent) renderRecent(data.recent);
         renderToday(data.today);
 
-        state.last = data.last || { time: payload.feedTime, feeder: payload.feeder, amount: payload.amount,
+        state.last = data.last || { time: payload.feedTime, feeder: payload.feeder, food: payload.food, amount: payload.amount,
                                     status: payload.catStatus, note: payload.note };
-        toast(`已記錄：${payload.catName}・${payload.feeder}・${payload.amount} 匙`);
+        toast(`已記錄：${payload.catName}・${payload.feeder}・${mealText(payload.food, payload.amount)}`);
 
-        // 保留餵食者與份量（下次通常一樣），其他回到預設
+        // 保留餵食者、食物種類與份量（下次通常一樣），其他回到預設
         state.timeKey = 'now';
         state.status = DEFAULT_STATUS;
         $('note').value = '';
         $('noteCount').textContent = `0/${NOTE_MAX}`;
 
         // 3D 回饋：湯匙舀飼料倒進碗裡、鏡頭繞場、花朵噴出
-        if (window.__huahua3d) window.__huahua3d.feedBowl();
+        if (window.__huahua3d) window.__huahua3d.feedBowl(kibble);
       } catch (err) {
         const offline = err instanceof TypeError; // fetch 連不上時各瀏覽器都丟 TypeError
         toast(`沒有記錄成功：${offline ? '請檢查網路' : err.message}，再按一次`, true);
@@ -923,12 +957,25 @@
         }
 
         // 掉在桌上的幾顆
-        [[-1.0, 1.55], [1.75, 1.6], [1.5, -0.15], [-0.75, 0.25]].forEach(([x, z], i) => {
+        [[-0.2, 1.9], [1.75, 1.6], [1.5, -0.15], [-0.75, 0.25]].forEach(([x, z], i) => {
           const k = mesh(kibbleGeo, kibbleMats[i % 3]);
           k.position.set(x, 0.09, z);
           k.rotation.set(i, i * 2, 0);
           scene.add(k);
         });
+
+        // 罐罐：選了有罐罐的種類才出現在碗旁邊
+        const can = new THREE.Group();
+        can.position.set(-1.3, 0, 1.25);
+        can.add(mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.5, 28), lambert(0xD9DDE2)));
+        const canLabel = mesh(new THREE.CylinderGeometry(0.368, 0.368, 0.3, 28, 1, true), lambert(0xF28C38));
+        const canLid = mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 28), lambert(0xF4F6F8));
+        canLid.position.y = 0.26;
+        can.add(canLabel, canLid);
+        can.children.forEach(c => { c.position.y += 0.25; });
+        can.visible = false;
+        scene.add(can);
+        let canTarget = 0, canScale = 0, canHop = 0;
 
         // 倒飼料時從湯匙落下的幾顆
         const pours = [];
@@ -1259,6 +1306,14 @@
             applyFood();
           }
 
+          // --- 罐罐：彈出／收起 ---
+          canScale += (canTarget - canScale) * Math.min(1, dt * 0.01);
+          canHop = Math.max(0, canHop - sec * 2);
+          can.visible = canScale > 0.02;
+          can.scale.setScalar(Math.max(0.001, canScale));
+          can.position.y = Math.sin(canHop * Math.PI) * 0.35;
+          can.rotation.y += sec * 0.6;
+
           // --- 碗：選份量時跳一下 ---
           bowlHop = Math.max(0, bowlHop - sec * 2.2);
           bowlGroup.position.set(BOWL_POS.x + wobble * 0.12, Math.sin(bowlHop * Math.PI) * 0.22, BOWL_POS.z);
@@ -1321,11 +1376,18 @@
           focus,
           updateFood(amount) { foodTarget = clamp01((Number(amount) || 0) / MAX_AMOUNT); },
           shakeBowl() { shakeLeft = SHAKE_MS; focus('warn'); },
-          feedBowl() {
+          setCan(on) { canTarget = on ? 1 : 0; },
+          // withKibble：這一餐有貓糧才播放湯匙倒飼料；只吃罐罐就讓罐罐跳一下
+          feedBowl(withKibble) {
+            focus('success');
+            if (withKibble === false) {
+              canHop = 1;
+              burstConfetti();
+              return;
+            }
             feedLeft = FEED_MS;
             foodLevel = 0;
             applyFood();
-            focus('success');
             setTimeout(burstConfetti, FEED_MS * 0.5);
           }
         };
@@ -1345,9 +1407,11 @@
         updateFood: stage.updateFood,
         shakeBowl: stage.shakeBowl,
         feedBowl: stage.feedBowl,
+        setCan: stage.setCan,
         focus: stage.focus
       };
-      stage.updateFood(state.amount || 0);
+      stage.updateFood(hasKibble(state.food) ? state.amount || 0 : 0);
+      stage.setCan(hasCan(state.food));
 
       let prev = performance.now();
       function frame(now) {
