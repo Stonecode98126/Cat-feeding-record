@@ -251,8 +251,22 @@
 
     .chip.status .emo { font-size: 20px; line-height: 1; }
 
-    .time-chips { grid-template-columns: repeat(5, 1fr); }
-    .time-chips .chip { font-size: 14px; padding: 6px 2px; }
+    /* 時間：左邊「現在／自訂」兩個選項，右邊是打開試算表的「編修」按鈕 */
+    .time-row { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+    .time-chips { grid-template-columns: repeat(2, 1fr); }
+
+    .chip.edit-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border-style: dashed;
+      border-color: var(--patch);
+      color: var(--patch-dark);
+      text-decoration: none;
+    }
+
+    .chip.edit-link:focus-visible { outline: 3px solid var(--patch); outline-offset: 2px; }
 
     .time-result {
       margin-top: 4px;
@@ -353,7 +367,7 @@
     .recent-table th,
     .recent-table td {
       border: 1px solid var(--line);
-      padding: 6px 10px;
+      padding: 6px 8px;
       text-align: left;
     }
 
@@ -399,9 +413,6 @@
       *, *::before, *::after { animation: none !important; transition: none !important; }
     }
 
-    @media (max-width: 350px) {
-      .time-chips { grid-template-columns: repeat(3, 1fr); }
-    }
   </style>
 </head>
 <body>
@@ -435,7 +446,10 @@
 
       <fieldset class="field">
         <legend>什麼時候餵的</legend>
-        <div class="chips time-chips" role="radiogroup" aria-label="餵食時間" id="timeChips"></div>
+        <div class="time-row">
+          <div class="chips time-chips" role="radiogroup" aria-label="餵食時間" id="timeChips"></div>
+          <a class="chip edit-link" id="editLink" href="#" target="_blank" rel="noopener" aria-label="編修：打開後台試算表"><span aria-hidden="true">✏️</span>編修</a>
+        </div>
         <input type="datetime-local" class="custom-time" id="customTime" aria-label="自訂餵食時間">
         <p class="time-result" id="timeResult"></p>
       </fieldset>
@@ -462,7 +476,7 @@
       <h2 id="recentTitle">最近五筆</h2>
       <table class="recent-table" id="recentTable" hidden>
         <thead>
-          <tr><th>誰餵的</th><th>吃了什麼</th><th>日期時間</th></tr>
+          <tr><th>誰餵的</th><th>食物種類</th><th class="num">幾匙</th><th>日期時間</th></tr>
         </thead>
         <tbody id="recentBody"></tbody>
       </table>
@@ -479,6 +493,7 @@
     // ====== 設定 ======
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqDG9QaCBfY6guDMgLDR8-CFoMnYVkOyNTEVc1a_0iHQZ6tt8Y8hcTkjMIpdE05EO1/exec'; // 換成部署好的 Web App 網址
     const MIN_GAP_MIN = 120; // 距上一餐少於這個分鐘數就先提醒
+    const SHEET_URL = '';    // 「編修」要打開的試算表網址；留空就用後端回傳的網址
     const NOTE_MAX = 30;
 
     const FEEDERS = ['爸爸', '媽媽', '睿睿', '葳葳'];
@@ -490,10 +505,7 @@
       { value: '貓糧+罐罐', emo: '🥣🥫', label: '貓糧＋罐罐' }
     ];
     const TIMES = [
-      { key: 'now', label: '現在', min: 0 },
-      { key: '15', label: '15 分前', min: 15 },
-      { key: '30', label: '30 分前', min: 30 },
-      { key: '60', label: '1 小時前', min: 60 },
+      { key: 'now', label: '現在' },
       { key: 'custom', label: '自訂' }
     ];
     const DEFAULT_STATUS = '正常吃完';
@@ -553,8 +565,7 @@
         const v = $('customTime').value;
         return v ? new Date(v) : null;
       }
-      const t = TIMES.find(x => x.key === state.timeKey);
-      return new Date(Date.now() - t.min * 60000);
+      return new Date();
     }
 
     // ====== 畫面 ======
@@ -680,9 +691,12 @@
       body.innerHTML = '';
       list.slice(0, 5).forEach(r => {
         const tr = document.createElement('tr');
-        [r.feeder, mealText(r.food, r.amount), fmtTime(new Date(r.time))].forEach(v => {
+        const food = FOODS.find(f => f.value === r.food) || FOODS[0]; // 舊記錄沒有食物種類，當作貓糧
+        const spoons = hasKibble(food.value) ? `${r.amount} 匙` : '—';
+        [r.feeder, food.label, spoons, fmtTime(new Date(r.time))].forEach((v, i) => {
           const td = document.createElement('td');
           td.textContent = v;
+          if (i === 2) td.className = 'num';
           tr.appendChild(td);
         });
         body.appendChild(tr);
@@ -700,6 +714,19 @@
       toast.timer = setTimeout(() => t.classList.remove('show'), isError ? 4000 : 2600);
     }
 
+    // ====== 「編修」：打開後台試算表 ======
+    let sheetUrl = SHEET_URL;
+    function setSheetUrl(url) {
+      if (!SHEET_URL && url) sheetUrl = url;
+      if (sheetUrl) $('editLink').href = sheetUrl;
+    }
+    setSheetUrl();
+    $('editLink').addEventListener('click', e => {
+      if (sheetUrl) return; // 有網址就照一般連結開新分頁
+      e.preventDefault();
+      toast('還拿不到試算表網址：請確認網路，或換上新版 Code.gs 並重新部署', true);
+    });
+
     // ====== 讀取上一餐 ======
     async function fetchLast() {
       const box = $('lastFeed');
@@ -715,6 +742,7 @@
           $('recentEmpty').textContent = '讀不到記錄。';
           return;
         }
+        setSheetUrl(data.sheetUrl);
         renderRecent(data.recent);
         renderToday(data.today);
         if (data.last) {
@@ -747,8 +775,8 @@
 
       // 距上一餐太近：第一次按先提醒，再按一次才送出
       if (state.last && !state.confirming) {
-        const gap = t.getTime() - toMs(state.last.time);
-        if (gap >= 0 && gap < MIN_GAP_MIN * 60000) {
+        const gap = Math.abs(t.getTime() - toMs(state.last.time)); // 補記較早的時間也算
+        if (gap < MIN_GAP_MIN * 60000) {
           state.confirming = true;
           renderSubmit();
           btn.textContent = `距上一餐才 ${fmtGap(gap)}，仍要記錄`;
