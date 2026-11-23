@@ -1,0 +1,1650 @@
+---
+// 花花 Pet Care 首頁
+// 所有 <script> / <style> 都加了 is:inline：Astro 會原樣輸出、不打包，
+// 因此頁面不依賴 /_astro/ 的絕對路徑，放在根路徑（Cloudflare Pages）
+// 或子路徑（GitHub Pages 的 /repo名稱/）都能正常運作。
+---
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#F4F1E8">
+  <title>花花 Pet Care｜餵食紀錄</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
+  <script is:inline src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <style is:inline>
+    :root {
+      --bg: #FDF1F3;        /* 肉球粉底 */
+      --card: #FFFFFF;
+      --ink: #3A2A24;       /* 花花的深棕毛色 */
+      --ink-soft: #8A7068;
+      --patch: #F28C38;     /* 頭頂那塊橘 */
+      --patch-dark: #D9711F;
+      --pad: #F6A5B6;       /* 肉球粉 */
+      --line: #F1D6DC;
+      --warn-bg: #FFF1E3;
+      --warn-ink: #9A4A0B;
+      --err-ink: #B42335;
+      --hand: "LXGW WenKai TC", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      --body: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--body);
+      font-size: 16px;
+      line-height: 1.5;
+      min-height: 100vh;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    }
+
+    .page {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 12px 16px 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ---------- 頂部：花花照片＋粉色小花底 ---------- */
+    .hero {
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      height: 112px;
+      padding: 0 16px 0 8px;
+      border-radius: 22px;
+      overflow: hidden;
+      background-color: #FDE4EA;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='%23F6A5B6'%3E%3Ccircle cx='14' cy='9' r='3.2'/%3E%3Ccircle cx='19' cy='13' r='3.2'/%3E%3Ccircle cx='17' cy='19' r='3.2'/%3E%3Ccircle cx='11' cy='19' r='3.2'/%3E%3Ccircle cx='9' cy='13' r='3.2'/%3E%3C/g%3E%3Ccircle cx='14' cy='14.5' r='2.4' fill='%23FFD27A'/%3E%3Cg fill='%23FFFFFF' opacity='.85'%3E%3Ccircle cx='42' cy='37' r='2.2'/%3E%3Ccircle cx='45.4' cy='39.6' r='2.2'/%3E%3Ccircle cx='44' cy='43.6' r='2.2'/%3E%3Ccircle cx='40' cy='43.6' r='2.2'/%3E%3Ccircle cx='38.6' cy='39.6' r='2.2'/%3E%3C/g%3E%3Ccircle cx='42' cy='40.6' r='1.6' fill='%23F6A5B6'/%3E%3Ccircle cx='40' cy='12' r='1.4' fill='%23F6A5B6' opacity='.6'/%3E%3Ccircle cx='12' cy='42' r='1.4' fill='%23F6A5B6' opacity='.6'/%3E%3C/svg%3E");
+      background-size: 56px 56px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero img {
+      flex: 0 0 auto;
+      height: 108px;
+      width: auto;
+      display: block;
+      filter: drop-shadow(0 3px 4px rgba(120, 60, 70, .25));
+    }
+
+    /* 簡單版頂部的名字（3D 場景沒啟動時才看得到） */
+    .hero-name {
+      flex: 1;
+      min-width: 0;
+      align-self: center;
+      font-family: var(--hand);
+      font-size: 44px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    /* 3D 場景：啟動後蓋滿整個頂部，照片與名字改由場景裡的物件呈現 */
+    .hero-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .hero.has-3d { height: clamp(168px, 24vh, 210px); }
+    .hero.has-3d .hero-canvas { display: block; }
+    .hero.has-3d img { display: none; }
+
+    .hero.has-3d .hero-name {
+      /* 視覺上隱藏，但螢幕閱讀器仍讀得到 */
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    /* ---------- 上一餐 ---------- */
+    .last-feed {
+      position: relative;
+      margin-top: 10px;
+      background: var(--card);
+      border-radius: 16px;
+      padding: 8px 14px;
+      font-size: 15px;
+      box-shadow: 0 2px 0 var(--line);
+    }
+
+    .last-feed::before {
+      content: "";
+      position: absolute;
+      top: -8px;
+      left: 56px;
+      border: 8px solid transparent;
+      border-top: 0;
+      border-bottom-color: var(--card);
+    }
+
+    .last-feed strong {
+      font-family: var(--hand);
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .last-feed .ago { color: var(--ink-soft); white-space: nowrap; }
+    .last-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 10px; }
+    .last-feed.is-recent .ago { color: var(--patch-dark); font-weight: 600; }
+    .last-status { display: block; }
+    .last-status.bad { color: var(--err-ink); font-weight: 600; }
+
+    /* ---------- 今日統計 ---------- */
+    .today-stats {
+      margin-top: 8px;
+      background: var(--card);
+      border-radius: 16px;
+      padding: 8px 14px;
+      font-size: 15px;
+      box-shadow: 0 2px 0 var(--line);
+    }
+
+    .today-stats[hidden] { display: none; }
+
+    .today-stats strong {
+      font-family: var(--hand);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--patch-dark);
+    }
+
+    /* ---------- 欄位 ---------- */
+    .field { margin-top: 12px; border: none; }
+    .field[hidden] { display: none; }
+
+    .field > legend,
+    .field > label {
+      display: block;
+      font-family: var(--hand);
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+
+    .field .hint {
+      font-family: var(--body);
+      font-weight: 400;
+      font-size: 13px;
+      color: var(--ink-soft);
+      margin-left: 6px;
+    }
+
+    .chips { display: grid; gap: 8px; }
+    .chips.cols-4 { grid-template-columns: repeat(4, 1fr); }
+    .chips.cols-3 { grid-template-columns: repeat(3, 1fr); }
+
+    .chip {
+      appearance: none;
+      min-height: 40px;
+      border: 2px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      border-radius: 16px;
+      font-family: var(--body);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 6px;
+      transition: transform .08s ease, background-color .15s ease, border-color .15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .chip:active { transform: scale(.96); }
+
+    .chip[aria-checked="true"] {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff;
+    }
+
+    .chip:focus-visible,
+    .submit:focus-visible,
+    .note-input:focus-visible,
+    .custom-time:focus-visible {
+      outline: 3px solid var(--patch);
+      outline-offset: 2px;
+    }
+
+    /* 份量：數字放大 */
+    .chip.amount {
+      min-height: 48px;
+      padding: 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+    }
+
+    .chip.amount .num {
+      font-family: var(--hand);
+      font-size: 23px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .chip.amount .unit { font-size: 12px; font-weight: 500; line-height: 1; }
+
+    /* 狀態：表情在上 */
+    .chip.status {
+      min-height: 52px;
+      padding: 4px 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: 13px;
+    }
+
+    .chip.status .emo { font-size: 20px; line-height: 1; }
+
+    /* 時間：左邊「現在／自訂」兩個選項，右邊是打開試算表的「編修」按鈕 */
+    .time-row { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+    .time-chips { grid-template-columns: repeat(2, 1fr); }
+
+    .chip.edit-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border-style: dashed;
+      border-color: var(--patch);
+      color: var(--patch-dark);
+      text-decoration: none;
+    }
+
+    .chip.edit-link:focus-visible { outline: 3px solid var(--patch); outline-offset: 2px; }
+
+    .time-result {
+      margin-top: 4px;
+      font-size: 14px;
+      color: var(--ink-soft);
+    }
+
+    .custom-time {
+      display: none;
+      margin-top: 6px;
+      width: 100%;
+      min-height: 40px;
+      padding: 6px 12px;
+      font-size: 17px;
+      font-family: var(--body);
+      color: var(--ink);
+      background: var(--card);
+      border: 2px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .custom-time.show { display: block; }
+
+    .note-wrap { position: relative; }
+
+    .note-input {
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 64px 8px 14px;
+      font-size: 16px;
+      font-family: var(--body);
+      color: var(--ink);
+      background: var(--card);
+      border: 2px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .note-input::placeholder { color: #BBA8A3; }
+
+    .note-count {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    /* ---------- 送出按鈕 ---------- */
+    .submit-wrap { margin-top: 16px; }
+
+    .submit {
+      appearance: none;
+      width: 100%;
+      min-height: 46px;
+      border: none;
+      border-radius: 16px;
+      background: var(--patch);
+      color: #fff;
+      font-family: var(--hand);
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 0 var(--patch-dark);
+      transition: transform .08s ease, box-shadow .08s ease;
+    }
+
+    .submit:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--patch-dark); }
+
+    .submit[disabled] { opacity: .6; cursor: default; }
+
+    .submit.confirm {
+      background: var(--warn-bg);
+      color: var(--warn-ink);
+      box-shadow: 0 4px 0 #F2C79E;
+      font-size: 18px;
+    }
+
+    /* ---------- 最近五筆 ---------- */
+    .recent { margin-top: 18px; }
+
+    .recent h2 {
+      font-family: var(--hand);
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+
+    .recent-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      border: 1px solid var(--line);
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .recent-table th,
+    .recent-table td {
+      border: 1px solid var(--line);
+      padding: 6px 8px;
+      text-align: left;
+    }
+
+    .recent-table th {
+      background: #FBE3E9;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .recent-table td.num,
+    .recent-table th.num { text-align: right; }
+
+    .recent-empty {
+      font-size: 14px;
+      color: var(--ink-soft);
+    }
+
+    /* ---------- 送出結果提示 ---------- */
+    .toast {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      top: calc(16px + env(safe-area-inset-top));
+      max-width: 448px;
+      margin: 0 auto;
+      background: var(--ink);
+      color: #fff;
+      border-radius: 16px;
+      padding: 14px 18px;
+      font-size: 16px;
+      text-align: center;
+      transform: translateY(-140%);
+      visibility: hidden;
+      transition: transform .25s ease, visibility 0s linear .25s;
+      z-index: 10;
+    }
+
+    .toast.show { transform: translateY(0); visibility: visible; transition: transform .25s ease; }
+    .toast.error { background: var(--err-ink); }
+
+    /* ---------- 減少動態：關掉 3D 與轉場 ---------- */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+  
+
+    /* ===== 花花 Pet Care：高質感自然系視覺改版（僅覆寫外觀） ===== */
+    :root {
+      --bg: #F4F1E8;
+      --card: #FFFEFA;
+      --ink: #30392F;
+      --ink-soft: #788174;
+      --patch: #A5A77A;
+      --patch-dark: #747A50;
+      --pad: #D8D8C2;
+      --line: #E4E2D7;
+      --warn-bg: #F7EEDB;
+      --warn-ink: #87632D;
+      --err-ink: #A54C43;
+      --hand: "LXGW WenKai TC", "PingFang TC", "Noto Sans TC", sans-serif;
+      --body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    }
+    body { background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.55; }
+    body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.22; z-index:0; background-image: radial-gradient(#a6a58d 0.55px, transparent .55px); background-size: 18px 18px; }
+    .page { max-width: 520px; padding: 18px 18px 30px; }
+    .hero { height: clamp(190px, 29vh, 245px); border-radius: 25px; background: linear-gradient(145deg,#e7e6d7,#d5d8c5 55%,#c5c9b3); box-shadow: 0 12px 32px rgba(56,64,46,.12); }
+    .hero.has-3d { height: clamp(190px, 29vh, 245px); }
+    .hero-name { color:#354032; text-shadow: 0 2px 0 rgba(255,255,255,.5); }
+    .last-feed, .today-stats { border-radius: 18px; padding: 12px 16px; background:rgba(255,254,250,.94); box-shadow:0 3px 12px rgba(51,57,43,.045); border:1px solid rgba(221,220,207,.75); }
+    .last-feed { margin-top:14px; font-size:14px; }
+    .last-feed::before { display:none; }
+    .last-feed strong, .today-stats strong { color:var(--patch-dark); }
+    .today-stats { margin-top:9px; }
+    .field { margin-top:18px; padding:13px 13px 14px; background:rgba(255,254,250,.76); border:1px solid var(--line); border-radius:19px; box-shadow:0 3px 12px rgba(51,57,43,.035); }
+    .field > legend, .field > label { font-family:var(--body); font-size:14px; font-weight:750; letter-spacing:.035em; margin:0 0 10px; color:#4b5545; }
+    .field .hint { color:#929787; }
+    .chips { gap:8px; }
+    .chip { min-height:44px; border:1px solid #dedfd3; border-radius:13px; background:#fffefa; color:#475143; font-size:14px; font-weight:650; transition:background .18s,border-color .18s,transform .12s,box-shadow .18s; }
+    .chip[aria-checked="true"] { background:#394638; border-color:#394638; color:#fff; box-shadow:0 4px 10px rgba(45,59,42,.15); }
+    .chip:active { transform:scale(.975); }
+    .chip.amount { min-height:58px; }
+    .chip.amount .num { font-family:var(--body); font-size:24px; font-weight:750; }
+    .chip.status { min-height:58px; }
+    .chip.status .emo { font-size:19px; }
+    .chip.edit-link { border:1px dashed #a6a77e; color:#73794f; }
+    .time-result { font-size:12px; color:#8a9182; margin-top:8px; }
+    .custom-time, .note-input { border:1px solid #dedfd3; border-radius:12px; background:#fffefa; }
+    .note-input { min-height:46px; }
+    .note-input:focus-visible, .custom-time:focus-visible { outline-color:#9a9e70; }
+    .submit-wrap { margin-top:20px; }
+    .submit { min-height:54px; border-radius:15px; background:#7e865d; box-shadow:0 4px 0 #626b47; font-family:var(--body); font-size:17px; letter-spacing:.06em; }
+    .submit.confirm { background:#f4ead6; color:#795d32; box-shadow:0 4px 0 #dfcba7; }
+    .recent { margin-top:24px; padding:16px 14px; background:rgba(255,254,250,.8); border:1px solid var(--line); border-radius:19px; }
+    .recent h2 { font-family:var(--body); font-size:14px; letter-spacing:.04em; color:#4b5545; margin-bottom:11px; }
+    .recent-table { border:0; border-radius:12px; overflow:hidden; font-size:13px; }
+    .recent-table th, .recent-table td { border-color:#e8e6dc; padding:9px 7px; }
+    .recent-table th { background:#e9eadf; color:#4a5546; font-size:12px; }
+    .recent-table td { background:#fffefa; }
+    .toast { border-radius:14px; box-shadow:0 8px 28px rgba(0,0,0,.16); }
+    @media (max-width:380px) { .page { padding-left:12px; padding-right:12px; } .field { padding:11px 10px 12px; } .chip { font-size:13px; } }
+    @media (prefers-reduced-motion: reduce) { body::before { display:none; } }
+
+  </style>
+</head>
+<body>
+  <main class="page">
+
+    <header class="hero" id="hero">
+      <img src="v3.jpeg" alt="花花的照片" onerror="this.style.display='none'">
+      <h1 class="hero-name">花花</h1>
+      <canvas class="hero-canvas" id="heroCanvas" role="img" aria-label="花花的 3D 餵食場景：餐桌上有飼料碗、湯匙和花"></canvas>
+      <input type="hidden" id="catName" value="花花">
+    </header>
+
+    <div class="last-feed" id="lastFeed" aria-live="polite">讀取上一餐…</div>
+    <div class="today-stats" id="todayStats" hidden></div>
+
+    <form id="feedForm" novalidate>
+      <fieldset class="field">
+        <legend>誰餵的</legend>
+        <div class="chips cols-4" role="radiogroup" aria-label="餵食者" id="feederChips"></div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend>吃什麼</legend>
+        <div class="chips cols-3" role="radiogroup" aria-label="食物種類" id="foodChips"></div>
+      </fieldset>
+
+      <fieldset class="field" id="amountField">
+        <legend>貓糧幾匙</legend>
+        <div class="chips cols-3" role="radiogroup" aria-label="貓糧份量" id="amountChips"></div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend>什麼時候餵的</legend>
+        <div class="time-row">
+          <div class="chips time-chips" role="radiogroup" aria-label="餵食時間" id="timeChips"></div>
+          <a class="chip edit-link" id="editLink" href="#" target="_blank" rel="noopener" aria-label="編修：打開後台試算表"><span aria-hidden="true">✏️</span>編修</a>
+        </div>
+        <input type="datetime-local" class="custom-time" id="customTime" aria-label="自訂餵食時間">
+        <p class="time-result" id="timeResult"></p>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend>吃得怎麼樣</legend>
+        <div class="chips cols-4" role="radiogroup" aria-label="貓咪狀態" id="statusChips"></div>
+      </fieldset>
+
+      <div class="field">
+        <label for="note">備註 <span class="hint">可不填，最多 30 字</span></label>
+        <div class="note-wrap">
+          <input type="text" class="note-input" id="note" maxlength="30" placeholder="例如：有點軟便" autocomplete="off">
+          <span class="note-count" id="noteCount">0/30</span>
+        </div>
+      </div>
+
+      <div class="submit-wrap">
+        <button type="submit" class="submit" id="submitBtn">記錄這一餐</button>
+      </div>
+    </form>
+
+    <section class="recent" aria-labelledby="recentTitle">
+      <h2 id="recentTitle">最近五筆</h2>
+      <table class="recent-table" id="recentTable" hidden>
+        <thead>
+          <tr><th>誰餵的</th><th>食物種類</th><th class="num">幾匙</th><th>日期時間</th></tr>
+        </thead>
+        <tbody id="recentBody"></tbody>
+      </table>
+      <p class="recent-empty" id="recentEmpty">讀取中…</p>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- ============================================================
+       1. 主程式：表單、讀取與送出
+       ============================================================ -->
+  <script is:inline>
+    // ====== 設定 ======
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqDG9QaCBfY6guDMgLDR8-CFoMnYVkOyNTEVc1a_0iHQZ6tt8Y8hcTkjMIpdE05EO1/exec'; // 換成部署好的 Web App 網址
+    const MIN_GAP_MIN = 120; // 距上一餐少於這個分鐘數就先提醒
+    const SHEET_URL = '';    // 「編修」要打開的試算表網址；留空就用後端回傳的網址
+    const NOTE_MAX = 30;
+
+    const FEEDERS = ['爸爸', '媽媽', '睿睿', '葳葳'];
+    const AMOUNTS = [1, 2, 3]; // 貓糧幾匙
+    const DEFAULT_FOOD = '貓糧';
+    const FOODS = [
+      { value: '貓糧', emo: '🥣', label: '貓糧' },
+      { value: '罐罐', emo: '🥫', label: '罐罐' },
+      { value: '貓糧+罐罐', emo: '🥣🥫', label: '貓糧＋罐罐' }
+    ];
+    const TIMES = [
+      { key: 'now', label: '現在' },
+      { key: 'custom', label: '自訂' }
+    ];
+    const DEFAULT_STATUS = '正常吃完';
+    const STATUSES = [
+      { value: '食慾良好', emo: '😋', label: '秒殺' },
+      { value: '正常吃完', emo: '🙂', label: '正常吃完' },
+      { value: '挑食/剩食', emo: '😼', label: '挑食剩食' },
+      { value: '食慾不佳', emo: '😿', label: '食慾不佳' }
+    ];
+    const BAD_STATUSES = ['挑食/剩食', '食慾不佳'];
+
+    // ====== 小工具 ======
+    const $ = id => document.getElementById(id);
+    function load(k) { try { return localStorage.getItem('huahua.' + k); } catch (e) { return null; } }
+    function save(k, v) { try { localStorage.setItem('huahua.' + k, v); } catch (e) {} }
+
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const pad2 = n => String(n).padStart(2, '0');
+    const fmtTime = d => `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    const toLocalInput = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    const toMs = v => new Date(v).getTime(); // 後端回傳數字或日期字串都能處理
+    const cue = name => { if (window.__huahua3d) window.__huahua3d.focus(name); }; // 通知 3D 場景切換運鏡
+
+    // 食物種類：罐罐固定一罐、不記數量；有貓糧才需要選幾匙
+    const hasKibble = food => food !== '罐罐';
+    const hasCan = food => food === '罐罐' || food === '貓糧+罐罐';
+    function mealText(food, amount) { // 舊記錄沒有食物種類，一律當作貓糧
+      if (food === '罐罐') return '罐罐';
+      return food === '貓糧+罐罐' ? `${amount} 匙＋罐罐` : `${amount} 匙`;
+    }
+
+    function fmtGap(ms) {
+      const m = Math.max(0, Math.round(ms / 60000));
+      if (m < 60) return `${m} 分鐘`;
+      const h = Math.floor(m / 60), r = m % 60;
+      return r ? `${h} 小時 ${r} 分` : `${h} 小時`;
+    }
+
+    // ====== 狀態 ======
+    const savedAmount = load('amount');
+    const state = {
+      feeder: load('feeder'),
+      food: load('food') || DEFAULT_FOOD,
+      amount: savedAmount !== null ? Number(savedAmount) : null,
+      timeKey: 'now',
+      status: DEFAULT_STATUS,
+      last: null,
+      confirming: false,
+      sending: false
+    };
+    if (!FEEDERS.includes(state.feeder)) state.feeder = null;
+    if (!FOODS.some(f => f.value === state.food)) state.food = DEFAULT_FOOD;
+    if (!AMOUNTS.includes(state.amount)) state.amount = null;
+
+    function feedTime() {
+      if (state.timeKey === 'custom') {
+        const v = $('customTime').value;
+        return v ? new Date(v) : null;
+      }
+      return new Date();
+    }
+
+    // ====== 畫面 ======
+    function renderChips(container, items, isOn, onPick, build) {
+      container.innerHTML = '';
+      items.forEach(item => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('role', 'radio');
+        b.setAttribute('aria-checked', isOn(item) ? 'true' : 'false');
+        build(b, item);
+        b.addEventListener('click', () => {
+          onPick(item);
+          state.confirming = false;
+          renderAll();
+        });
+        container.appendChild(b);
+      });
+    }
+
+    function renderAll() {
+      renderChips($('feederChips'), FEEDERS, f => f === state.feeder,
+        f => { state.feeder = f; save('feeder', f); cue('feeder'); },
+        (b, f) => { b.className = 'chip'; b.textContent = f; });
+
+      renderChips($('foodChips'), FOODS, f => f.value === state.food,
+        f => { state.food = f.value; save('food', f.value); cue('amount'); },
+        (b, f) => {
+          b.className = 'chip status';
+          b.innerHTML = `<span class="emo" aria-hidden="true">${f.emo}</span><span>${f.label}</span>`;
+        });
+
+      // 只吃罐罐時不用選幾匙
+      $('amountField').hidden = !hasKibble(state.food);
+      renderChips($('amountChips'), AMOUNTS, a => a === state.amount,
+        a => { state.amount = a; save('amount', a); cue('amount'); },
+        (b, a) => {
+          b.className = 'chip amount';
+          b.innerHTML = `<span class="num">${a}</span><span class="unit">匙</span>`;
+          b.setAttribute('aria-label', `${a} 匙`);
+        });
+
+      renderChips($('timeChips'), TIMES, t => t.key === state.timeKey,
+        t => {
+          state.timeKey = t.key;
+          if (t.key === 'custom' && !$('customTime').value) {
+            $('customTime').value = toLocalInput(new Date());
+          }
+          cue('time');
+        },
+        (b, t) => { b.className = 'chip'; b.textContent = t.label; });
+
+      renderChips($('statusChips'), STATUSES, s => s.value === state.status,
+        s => { state.status = s.value; cue('status'); },
+        (b, s) => {
+          b.className = 'chip status';
+          b.innerHTML = `<span class="emo" aria-hidden="true">${s.emo}</span><span>${s.label}</span>`;
+        });
+
+      $('customTime').classList.toggle('show', state.timeKey === 'custom');
+      $('customTime').max = toLocalInput(new Date());
+      renderTimeResult();
+      renderSubmit();
+      renderLast();
+
+      // 3D 場景：更新碗裡的飼料量，以及桌上要不要放罐罐
+      if (window.__huahua3d) {
+        window.__huahua3d.updateFood(hasKibble(state.food) ? state.amount || 0 : 0);
+        window.__huahua3d.setCan(hasCan(state.food));
+      }
+    }
+
+    function renderTimeResult() {
+      const t = feedTime();
+      $('timeResult').textContent = t && !isNaN(t) ? `記為 ${fmtTime(t)}` : '請選擇時間';
+    }
+
+    function renderSubmit() {
+      const btn = $('submitBtn');
+      btn.classList.toggle('confirm', state.confirming);
+      if (!state.confirming && !state.sending) btn.textContent = '記錄這一餐';
+    }
+
+    function renderLast() {
+      const box = $('lastFeed');
+      if (!state.last) return;
+      const t = new Date(state.last.time);
+      const gap = Date.now() - t.getTime();
+      box.classList.toggle('is-recent', gap < MIN_GAP_MIN * 60000);
+
+      const st = STATUSES.find(s => s.value === state.last.status);
+      const bad = BAD_STATUSES.includes(state.last.status);
+      let statusLine = '';
+      if (st) {
+        statusLine = `<span class="last-status${bad ? ' bad' : ''}">${st.emo} 吃得：${st.label}`;
+        if (state.last.note) statusLine += `・${esc(state.last.note)}`;
+        statusLine += '</span>';
+      } else if (state.last.note) {
+        statusLine = `<span class="last-status">備註：${esc(state.last.note)}</span>`;
+      }
+
+      box.innerHTML = `上一餐 <strong>${fmtTime(t)}</strong>・${esc(state.last.feeder)}・${esc(mealText(state.last.food, state.last.amount))}` +
+        `<span class="last-row">${statusLine}<span class="ago">${fmtGap(gap)}前</span></span>`;
+    }
+
+    function renderToday(t) {
+      const el = $('todayStats');
+      if (!t) { el.hidden = true; return; }
+      el.innerHTML = `今天 ${esc(t.date)} 已餵 <strong>${esc(t.total)}</strong> 匙${t.can ? '・有吃罐罐' : ''}・共 ${esc(t.count)} 餐`;
+      el.hidden = false;
+    }
+
+    function renderRecent(list) {
+      const table = $('recentTable'), body = $('recentBody'), empty = $('recentEmpty');
+      if (!Array.isArray(list) || !list.length) {
+        table.hidden = true;
+        empty.hidden = false;
+        empty.textContent = Array.isArray(list)
+          ? '還沒有任何記錄。'
+          : '後端尚未更新，請換上新版 Code.gs 並重新部署。';
+        return;
+      }
+      body.innerHTML = '';
+      list.slice(0, 5).forEach(r => {
+        const tr = document.createElement('tr');
+        const food = FOODS.find(f => f.value === r.food) || FOODS[0]; // 舊記錄沒有食物種類，當作貓糧
+        const spoons = hasKibble(food.value) ? `${r.amount} 匙` : '—';
+        [r.feeder, food.label, spoons, fmtTime(new Date(r.time))].forEach((v, i) => {
+          const td = document.createElement('td');
+          td.textContent = v;
+          if (i === 2) td.className = 'num';
+          tr.appendChild(td);
+        });
+        body.appendChild(tr);
+      });
+      table.hidden = false;
+      empty.hidden = true;
+    }
+
+    function toast(msg, isError) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.toggle('error', !!isError);
+      t.classList.add('show');
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => t.classList.remove('show'), isError ? 4000 : 2600);
+    }
+
+    // ====== 「編修」：打開後台試算表 ======
+    let sheetUrl = SHEET_URL;
+    function setSheetUrl(url) {
+      if (!SHEET_URL && url) sheetUrl = url;
+      if (sheetUrl) $('editLink').href = sheetUrl;
+    }
+    setSheetUrl();
+    $('editLink').addEventListener('click', e => {
+      if (sheetUrl) return; // 有網址就照一般連結開新分頁
+      e.preventDefault();
+      toast('還拿不到試算表網址：請確認網路，或換上新版 Code.gs 並重新部署', true);
+    });
+
+    // ====== 讀取上一餐 ======
+    async function fetchLast() {
+      const box = $('lastFeed');
+      if (SCRIPT_URL.startsWith('YOUR_')) {
+        box.textContent = '尚未設定 Apps Script 網址，請先修改程式中的 SCRIPT_URL。';
+        return;
+      }
+      try {
+        const res = await fetch(SCRIPT_URL + '?t=' + Date.now(), { cache: 'no-store' });
+        const data = await res.json();
+        if (!data.ok) {
+          box.textContent = `讀不到上一餐：${data.error || '未知錯誤'}`;
+          $('recentEmpty').textContent = '讀不到記錄。';
+          return;
+        }
+        setSheetUrl(data.sheetUrl);
+        renderRecent(data.recent);
+        renderToday(data.today);
+        if (data.last) {
+          state.last = data.last;
+          renderLast();
+        } else {
+          box.textContent = '還沒有任何記錄，這會是第一餐。';
+        }
+      } catch (err) {
+        box.textContent = '讀不到上一餐：請檢查網路，重新整理頁面。';
+        $('recentEmpty').textContent = '讀不到記錄：請檢查網路。';
+      }
+    }
+
+    // ====== 送出 ======
+    $('feedForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      if (state.sending) return;
+      const btn = $('submitBtn');
+
+      const missing = [];
+      if (!state.feeder) missing.push('誰餵的');
+      const kibble = hasKibble(state.food);
+      if (kibble && state.amount === null) missing.push('貓糧幾匙');
+      if (missing.length) { toast(`還沒選：${missing.join('、')}`, true); return; }
+
+      const t = feedTime();
+      if (!t || isNaN(t)) { toast('請選擇餵食時間', true); return; }
+      if (t.getTime() > Date.now() + 60000) { toast('餵食時間不能晚於現在', true); return; }
+
+      // 距上一餐太近：第一次按先提醒，再按一次才送出
+      if (state.last && !state.confirming) {
+        const gap = Math.abs(t.getTime() - toMs(state.last.time)); // 補記較早的時間也算
+        if (gap < MIN_GAP_MIN * 60000) {
+          state.confirming = true;
+          renderSubmit();
+          btn.textContent = `距上一餐才 ${fmtGap(gap)}，仍要記錄`;
+          if (window.__huahua3d) window.__huahua3d.shakeBowl();
+          return;
+        }
+      }
+
+      if (SCRIPT_URL.startsWith('YOUR_')) { toast('尚未設定 Apps Script 網址', true); return; }
+
+      const payload = {
+        catName: $('catName').value.trim() || '花花',
+        feeder: state.feeder,
+        food: state.food,
+        amount: kibble ? state.amount : 0, // 只吃罐罐時不記匙數
+        feedTime: t.getTime(),
+        catStatus: state.status,
+        note: $('note').value.trim().slice(0, NOTE_MAX)
+      };
+
+      state.sending = true;
+      btn.disabled = true;
+      btn.textContent = '記錄中…';
+
+      try {
+        // 不設 Content-Type、不用 no-cors：瀏覽器會以 text/plain 送出，不觸發預檢，也能讀到回應
+        const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || '寫入失敗');
+        if (data.recent) renderRecent(data.recent);
+        renderToday(data.today);
+
+        state.last = data.last || { time: payload.feedTime, feeder: payload.feeder, food: payload.food, amount: payload.amount,
+                                    status: payload.catStatus, note: payload.note };
+        toast(`已記錄：${payload.catName}・${payload.feeder}・${mealText(payload.food, payload.amount)}`);
+
+        // 保留餵食者、食物種類與份量（下次通常一樣），其他回到預設
+        state.timeKey = 'now';
+        state.status = DEFAULT_STATUS;
+        $('note').value = '';
+        $('noteCount').textContent = `0/${NOTE_MAX}`;
+
+        // 3D 回饋：湯匙舀飼料倒進碗裡、鏡頭繞場、花朵噴出
+        if (window.__huahua3d) window.__huahua3d.feedBowl(kibble);
+      } catch (err) {
+        const offline = err instanceof TypeError; // fetch 連不上時各瀏覽器都丟 TypeError
+        toast(`沒有記錄成功：${offline ? '請檢查網路' : err.message}，再按一次`, true);
+      } finally {
+        state.sending = false;
+        state.confirming = false;
+        btn.disabled = false;
+        renderAll();
+      }
+    });
+
+    $('customTime').addEventListener('input', () => { state.confirming = false; renderTimeResult(); renderSubmit(); });
+    $('note').addEventListener('input', e => { $('noteCount').textContent = `${e.target.value.length}/${NOTE_MAX}`; });
+
+    // 每分鐘更新「幾分鐘前」與「現在」的時間
+    setInterval(() => { renderTimeResult(); renderLast(); }, 60000);
+
+    renderAll();
+    fetchLast();
+  </script>
+
+  <!-- ============================================================
+       2. Service Worker：離線快取，第一次載入後不用反覆下載靜態資源
+       ============================================================ -->
+  <script is:inline>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .catch(err => console.warn('[ServiceWorker] 註冊失敗', err));
+      });
+    }
+  </script>
+
+  <!-- ============================================================
+       3. Three.js 沉浸式 3D 餵食場景（畫在頂部 hero 裡）
+          場景：圓餐桌、飼料碗與貓糧、湯匙、花瓶、飄浮的花、漂浮相片、
+                立在碗後方的名字、貓跳台、逗貓棒、貓草、鈴鐺球，加上會投影的主光與暖色補光。
+          運鏡：選餵食者 → 推向相片；選份量 → 俯看碗內；選時間 → 繞桌遠景；
+                選狀態 → 低角度看名字；過近警告 → 逼近碗＋鏡頭震動＋燈光轉橘紅；
+                記錄成功 → 湯匙舀飼料倒進碗、鏡頭繞場一圈、花朵噴出。
+          沒有 WebGL、Three.js 沒載到或使用者關閉動態時，退回照片＋文字的簡單版頂部。
+       ============================================================ -->
+  <script is:inline>
+    (function () {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      if (typeof THREE === 'undefined') {
+        console.warn('[Three.js] 未載入，3D 場景已停用');
+        return;
+      }
+
+      const DPR = Math.min(window.devicePixelRatio || 1, 2);
+      const FOV = 32;
+      const FONT = '"LXGW WenKai TC", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+      const NAME = $('catName').value || '花花';
+      const PHOTO_URL = 'v3.jpeg';
+      const TAU = Math.PI * 2;
+      const smooth = k => k * k * (3 - 2 * k);
+      const clamp01 = v => Math.min(1, Math.max(0, v));
+      const rand = (a, b) => a + Math.random() * (b - a);
+      const span = (k, a, b) => clamp01((k - a) / (b - a)); // k 在 a~b 之間的進度 0~1
+
+      function createScene() {
+        const heroEl = $('hero');
+        const canvas = $('heroCanvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+        renderer.setPixelRatio(DPR);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
+
+        const lambert = (color, extra) => new THREE.MeshLambertMaterial(Object.assign({ color }, extra));
+        function mesh(geo, mat, cast, receive) {
+          const m = new THREE.Mesh(geo, mat);
+          m.castShadow = cast !== false;
+          m.receiveShadow = !!receive;
+          return m;
+        }
+
+        // ---------- 燈光 ----------
+        const hemi = new THREE.HemisphereLight(0xFFFFFF, 0xF6C9D2, 1.5);
+        scene.add(hemi);
+
+        const KEY_COLOR = new THREE.Color(0xFFF1DC), WARN_COLOR = new THREE.Color(0xFF7A45);
+        const key = new THREE.DirectionalLight(KEY_COLOR, 2.6); // 主光：左上前方照下來，會投影
+        key.position.set(-4, 7, 5);
+        key.castShadow = true;
+        key.shadow.mapSize.set(1024, 1024);
+        key.shadow.camera.left = -6; key.shadow.camera.right = 6;
+        key.shadow.camera.top = 6; key.shadow.camera.bottom = -6;
+        key.shadow.camera.near = 1; key.shadow.camera.far = 20;
+        key.shadow.bias = -0.0006;
+        key.shadow.normalBias = 0.03;
+        scene.add(key);
+
+        const warm = new THREE.PointLight(0xFFB070, 7, 9); // 花瓶旁的暖色補光
+        warm.position.set(3.0, 1.8, -0.3);
+        scene.add(warm);
+
+        // 斜射的光束
+        const beam = new THREE.Mesh(
+          new THREE.ConeGeometry(2.4, 9, 24, 1, true),
+          new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide })
+        );
+        beam.position.set(-2.2, 3.6, -0.6);
+        beam.rotation.z = -0.5;
+        scene.add(beam);
+
+        // ---------- 餐桌 ----------
+        const table = mesh(new THREE.CylinderGeometry(4.4, 4.4, 0.3, 56), lambert(0xFFF7EE), false, true);
+        table.position.y = -0.15;
+        scene.add(table);
+
+        const tableEdge = mesh(new THREE.TorusGeometry(4.4, 0.09, 8, 56), lambert(0xF6A5B6), false, false);
+        tableEdge.rotation.x = Math.PI / 2;
+        scene.add(tableEdge);
+
+        const BOWL_POS = new THREE.Vector3(0.4, 0, 0.7);
+        const mat = mesh(new THREE.CircleGeometry(1.75, 48), lambert(0xFBD3DC), false, true); // 餐墊
+        mat.rotation.x = -Math.PI / 2;
+        mat.position.set(BOWL_POS.x, 0.006, BOWL_POS.z);
+        scene.add(mat);
+
+        // ---------- 飼料碗 + 貓糧 ----------
+        const bowlGroup = new THREE.Group();
+        bowlGroup.position.copy(BOWL_POS);
+        scene.add(bowlGroup);
+
+        const B_Y0 = 0.03, B_Y1 = 0.78, B_R0 = 0.55, B_R1 = 1.05;
+        const bowlRadiusAt = y => B_R0 + (y - B_Y0) / (B_Y1 - B_Y0) * (B_R1 - B_R0);
+
+        bowlGroup.add(mesh(
+          new THREE.LatheGeometry([
+            new THREE.Vector2(0, B_Y0),
+            new THREE.Vector2(B_R0, B_Y0),
+            new THREE.Vector2(B_R1, B_Y1)
+          ], 44),
+          lambert(0xFFFFFF, { side: THREE.DoubleSide, emissive: 0x3A3033 }), true, true
+        ));
+        const rim = mesh(new THREE.TorusGeometry(B_R1, 0.06, 8, 44), lambert(0xF28C9F));
+        rim.rotation.x = Math.PI / 2;
+        rim.position.y = B_Y1;
+        bowlGroup.add(rim);
+
+        const kibbleGeo = new THREE.IcosahedronGeometry(0.115, 0);
+        const kibbleMats = [0xB9763F, 0xD08F52, 0x9C5F30].map(c => lambert(c, { flatShading: true }));
+        const KIBBLE_COUNT = 54;
+        const kibbles = []; // 由下往上排好，份量越多顯示越多顆
+        for (let i = 0; i < KIBBLE_COUNT; i++) {
+          const level = (i + 1) / KIBBLE_COUNT;
+          const y = 0.14 + 0.56 * level;
+          const r = (bowlRadiusAt(y) - 0.16) * Math.sqrt(Math.random());
+          const a = Math.random() * TAU;
+          const k = mesh(kibbleGeo, kibbleMats[i % 3]);
+          k.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+          k.rotation.set(rand(0, TAU), rand(0, TAU), 0);
+          k.visible = false;
+          k.userData.level = level;
+          bowlGroup.add(k);
+          kibbles.push(k);
+        }
+
+        // 掉在桌上的幾顆
+        [[-0.2, 1.9], [0.9, 2.05], [1.5, -0.15], [-0.75, 0.25]].forEach(([x, z], i) => {
+          const k = mesh(kibbleGeo, kibbleMats[i % 3]);
+          k.position.set(x, 0.09, z);
+          k.rotation.set(i, i * 2, 0);
+          scene.add(k);
+        });
+
+        // 罐罐：選了有罐罐的種類才出現在碗旁邊
+        const can = new THREE.Group();
+        can.position.set(-1.3, 0, 1.25);
+        can.add(mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.5, 28), lambert(0xD9DDE2)));
+        const canLabel = mesh(new THREE.CylinderGeometry(0.368, 0.368, 0.3, 28, 1, true), lambert(0xF28C38));
+        const canLid = mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 28), lambert(0xF4F6F8));
+        canLid.position.y = 0.26;
+        can.add(canLabel, canLid);
+        can.children.forEach(c => { c.position.y += 0.25; });
+        can.visible = false;
+        scene.add(can);
+        let canTarget = 0, canScale = 0, canHop = 0;
+
+        // 倒飼料時從湯匙落下的幾顆
+        const pours = [];
+        for (let i = 0; i < 8; i++) {
+          const k = mesh(kibbleGeo, kibbleMats[i % 3]);
+          k.visible = false;
+          k.userData = { dx: rand(-0.25, 0.25), dz: rand(-0.25, 0.25), delay: i * 0.035 };
+          scene.add(k);
+          pours.push(k);
+        }
+
+        // ---------- 湯匙（匙斗在原點、匙柄往 +x） ----------
+        const spoon = new THREE.Group();
+        const spoonMat = lambert(0xF28C38, { side: THREE.DoubleSide });
+        const scoop = mesh(new THREE.SphereGeometry(0.34, 20, 12, 0, TAU, Math.PI / 2, Math.PI / 2), spoonMat);
+        scoop.position.y = 0.3;
+        scoop.scale.set(1.15, 0.85, 0.9);
+        const handle = mesh(new THREE.CylinderGeometry(0.05, 0.065, 1.5, 10), spoonMat);
+        handle.rotation.z = Math.PI / 2;
+        handle.position.set(1.05, 0.27, 0);
+        const spoonFood = new THREE.Group(); // 匙裡的飼料，舀起來時才顯示
+        for (let i = 0; i < 6; i++) {
+          const k = mesh(kibbleGeo, kibbleMats[i % 3]);
+          k.position.set(rand(-0.16, 0.16), 0.2 + (i % 2) * 0.09, rand(-0.13, 0.13));
+          spoonFood.add(k);
+        }
+        spoonFood.visible = false;
+        spoon.add(scoop, handle, spoonFood);
+        scene.add(spoon);
+
+        const AXIS_Z = new THREE.Vector3(0, 0, 1), tmpQuat = new THREE.Quaternion();
+        const quat = (x, y, z) => new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z));
+        const SPOON_REST = { p: new THREE.Vector3(2.0, -0.02, 1.75), q: quat(0, 0.45, 0) };
+        const SPOON_OVER = { p: new THREE.Vector3(BOWL_POS.x + 0.1, 1.5, BOWL_POS.z), q: quat(0, 0.2, 0.12) };
+        const SPOON_POUR = { p: SPOON_OVER.p, q: SPOON_OVER.q.clone().multiply(quat(2.0, 0, 0)) };
+        spoon.position.copy(SPOON_REST.p);
+        spoon.quaternion.copy(SPOON_REST.q);
+
+        // ---------- 花 ----------
+        const petalGeo = new THREE.SphereGeometry(1, 12, 8);
+        const flowerCenter = lambert(0xFFD27A);
+        function makeFlower(color) {
+          const g = new THREE.Group();
+          const m = lambert(color);
+          for (let i = 0; i < 5; i++) {
+            const a = i / 5 * TAU;
+            const petal = mesh(petalGeo, m);
+            petal.scale.set(0.55, 0.55, 0.24);
+            petal.position.set(Math.cos(a) * 0.62, Math.sin(a) * 0.62, 0);
+            g.add(petal);
+          }
+          const c = mesh(petalGeo, flowerCenter);
+          c.scale.setScalar(0.36);
+          g.add(c);
+          return g;
+        }
+
+        // 花瓶 + 三朵花
+        const vase = new THREE.Group();
+        vase.position.set(3.3, 0, -0.9);
+        vase.add(mesh(
+          new THREE.LatheGeometry([[0, 0], [0.26, 0], [0.36, 0.3], [0.2, 0.62], [0.27, 0.78]].map(p => new THREE.Vector2(p[0], p[1])), 24),
+          lambert(0xFFFFFF, { side: THREE.DoubleSide }), true, true
+        ));
+        const stemMat = lambert(0x7DBE7A);
+        const blooms = [];
+        [[-0.3, 1.75, 0xF6A5B6], [0.05, 2.05, 0xFFFFFF], [0.38, 1.6, 0xF28C9F]].forEach(([lean, top, color]) => {
+          const len = top - 0.6;
+          const stem = mesh(new THREE.CylinderGeometry(0.025, 0.025, len, 6), stemMat);
+          stem.position.set(lean * 0.5, 0.6 + len / 2, 0);
+          stem.rotation.z = -lean * 0.45;
+          const f = makeFlower(color);
+          f.scale.setScalar(0.3);
+          f.position.set(lean, top, 0.03);
+          vase.add(stem, f);
+          blooms.push(f);
+        });
+        scene.add(vase);
+
+        // 空中飄的花
+        const floaters = [];
+        for (let i = 0; i < 9; i++) {
+          const f = makeFlower([0xF6A5B6, 0xFFFFFF, 0xFFD9E1][i % 3]);
+          f.scale.setScalar(rand(0.1, 0.17));
+          f.userData = {
+            x: rand(-4.2, 4.2), y: rand(1.2, 3.4), z: rand(-2.6, 1.6),
+            fall: rand(0.08, 0.2), amp: rand(0.15, 0.4), phase: rand(0, TAU),
+            rx: rand(-0.8, 0.8), ry: rand(-1.1, 1.1)
+          };
+          scene.add(f);
+          floaters.push(f);
+        }
+
+        // 記錄成功時從碗噴出的花
+        const confetti = [];
+        for (let i = 0; i < 14; i++) {
+          const f = makeFlower([0xF6A5B6, 0xFFD27A, 0xFFFFFF, 0xF28C38][i % 4]);
+          f.scale.setScalar(rand(0.1, 0.16));
+          f.visible = false;
+          f.userData = { v: new THREE.Vector3(), rx: 0, ry: 0 };
+          scene.add(f);
+          confetti.push(f);
+        }
+
+        // ---------- 貓跳台（左側）：麻繩柱、兩層平台、頂部小窩、掛著會晃的小球 ----------
+        const tree = new THREE.Group();
+        tree.position.set(-3.5, 0, 0.35);
+        const treePink = lambert(0xF6A5B6), treeLight = lambert(0xF9C4D0);
+        const treeBase = mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.08, 28), treePink, true, true);
+        treeBase.position.y = 0.04;
+        const post = mesh(new THREE.CylinderGeometry(0.11, 0.11, 2.0, 12), lambert(0xD9B48A));
+        post.position.y = 1.0;
+        tree.add(treeBase, post);
+        const ropeGeo = new THREE.TorusGeometry(0.115, 0.022, 6, 14);
+        const ropeMat = lambert(0xC29A6B);
+        for (let i = 0; i < 7; i++) {
+          const ring = mesh(ropeGeo, ropeMat, false);
+          ring.rotation.x = Math.PI / 2;
+          ring.position.y = 0.25 + i * 0.1;
+          tree.add(ring);
+        }
+        const midDeck = mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.07, 24), treeLight, true, true);
+        midDeck.position.set(-0.05, 1.05, 0.3);
+        const topDeck = mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.08, 24), treePink, true, true);
+        topDeck.position.y = 2.02;
+        const nest = mesh(new THREE.SphereGeometry(0.4, 18, 12, 0, TAU, 0, Math.PI / 2), treeLight);
+        nest.scale.set(1, 0.8, 0.85);
+        nest.position.y = 2.06;
+        tree.add(midDeck, topDeck, nest);
+        const dangle = new THREE.Group(); // 掛在平台下的小球，繞著掛點擺動
+        dangle.position.set(0.1, 1.02, 0.6);
+        const dangleString = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.36, 5), lambert(0x8A7068), false);
+        dangleString.position.y = -0.18;
+        const dangleBall = mesh(new THREE.SphereGeometry(0.1, 14, 10), lambert(0xFFD27A));
+        dangleBall.position.y = -0.42;
+        dangle.add(dangleString, dangleBall);
+        tree.add(dangle);
+        scene.add(tree);
+
+        // ---------- 逗貓棒（右前方）：斜靠的棒子，線和羽毛垂在桌面上方擺盪 ----------
+        const WAND_BASE = new THREE.Vector3(3.25, 0, 1.15), WAND_TIP = new THREE.Vector3(2.05, 2.15, 0.95);
+        const wandLen = WAND_BASE.distanceTo(WAND_TIP);
+        const wand = new THREE.Group();
+        wand.position.copy(WAND_BASE);
+        const WAND_Q = new THREE.Quaternion().setFromUnitVectors(
+          new THREE.Vector3(0, 1, 0), WAND_TIP.clone().sub(WAND_BASE).normalize());
+        wand.quaternion.copy(WAND_Q);
+        const stick = mesh(new THREE.CylinderGeometry(0.03, 0.045, wandLen, 8), lambert(0xC98A4B));
+        stick.position.y = wandLen / 2;
+        const wandStand = mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.14, 18), lambert(0xF28C9F), true, true);
+        wandStand.position.copy(WAND_BASE).setY(0.07);
+        wand.add(stick);
+        scene.add(wand, wandStand);
+
+        const lure = new THREE.Group(); // 線＋羽毛，掛在棒尖，不跟著棒子傾斜
+        const lureString = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.8, 5), lambert(0x8A7068), false);
+        lureString.position.y = -0.4;
+        const knot = mesh(new THREE.SphereGeometry(0.06, 10, 8), lambert(0x3A2A24));
+        knot.position.y = -0.82;
+        lure.add(lureString, knot);
+        [[0xF28C38, 0.5], [0xF6A5B6, -0.45], [0xFFD27A, 0]].forEach(([color, lean]) => {
+          const feather = mesh(petalGeo, lambert(color));
+          feather.scale.set(0.085, 0.28, 0.03);
+          feather.position.set(Math.sin(lean) * 0.2, -0.86 - Math.cos(lean) * 0.22, 0);
+          feather.rotation.z = lean;
+          lure.add(feather);
+        });
+        scene.add(lure);
+        let lureSwing = 0; // 額外的擺盪力道（記錄成功、點場景時加大）
+
+        // ---------- 貓草（右側一盆）：草葉左右搖 ----------
+        const grass = new THREE.Group();
+        grass.position.set(2.55, 0, -0.35);
+        grass.add(mesh(new THREE.CylinderGeometry(0.34, 0.25, 0.4, 20), lambert(0xE9A98A), true, true));
+        grass.children[0].position.y = 0.2;
+        const soil = mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.02, 20), lambert(0x8A5A3C), false);
+        soil.position.y = 0.4;
+        grass.add(soil);
+        const blades = [];
+        const bladeMats = [0x6FBF6A, 0x8FD27F, 0x58A85A].map(c => lambert(c));
+        for (let i = 0; i < 16; i++) {
+          const h = rand(0.55, 1.0);
+          const pivot = new THREE.Group();
+          const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * 0.22;
+          pivot.position.set(Math.cos(a) * r, 0.4, Math.sin(a) * r);
+          const blade = mesh(new THREE.ConeGeometry(0.04, h, 5), bladeMats[i % 3]);
+          blade.position.y = h / 2;
+          pivot.add(blade);
+          pivot.userData = { leanX: rand(-0.3, 0.3), leanZ: rand(-0.35, 0.35), phase: rand(0, TAU) };
+          grass.add(pivot);
+          blades.push(pivot);
+        }
+        scene.add(grass);
+
+        // ---------- 鈴鐺球（碗的右前方）：偶爾滾一小段，點場景時被彈開 ----------
+        const BALL_R = 0.2, BALL_HOME = new THREE.Vector3(1.5, BALL_R, 1.4);
+        const ball = new THREE.Group();
+        ball.add(mesh(new THREE.SphereGeometry(BALL_R, 18, 14), lambert(0xFFD27A)));
+        const band = mesh(new THREE.TorusGeometry(BALL_R, 0.022, 6, 24), lambert(0xF28C38), false);
+        ball.add(band);
+        const dotGeo = new THREE.SphereGeometry(0.045, 8, 6);
+        const dotMat = lambert(0xFFF7EE);
+        [[1, 1, 1], [-1, 1, -1], [1, -1, -1], [-1, -1, 1], [0, 1, -1], [0, -1, 1]].forEach(v => {
+          const dot = mesh(dotGeo, dotMat, false);
+          dot.position.set(v[0], v[1], v[2]).normalize().multiplyScalar(BALL_R * 0.96);
+          ball.add(dot);
+        });
+        scene.add(ball);
+        let ballKick = 0;
+
+        // ---------- 漂浮相片 ----------
+        const photo = new THREE.Group();
+        const PHOTO_BASE = new THREE.Vector3(-2.05, 1.52, -0.6);
+        const PHOTO_H = 1.75;
+        photo.position.copy(PHOTO_BASE);
+        const frame = mesh(new THREE.BoxGeometry(1, 1, 0.06), lambert(0xFFFFFF));
+        const picMat = new THREE.MeshBasicMaterial({ color: 0xFBD3DC });
+        const pic = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), picMat);
+        pic.position.z = 0.034;
+        photo.add(frame, pic);
+        scene.add(photo);
+
+        function setPhoto(texture, aspect) {
+          const w = PHOTO_H * Math.min(1.5, Math.max(0.6, aspect));
+          texture.colorSpace = THREE.SRGBColorSpace;
+          picMat.map = texture;
+          picMat.color.set(0xFFFFFF);
+          picMat.needsUpdate = true;
+          pic.scale.set(w, PHOTO_H, 1);
+          frame.scale.set(w + 0.16, PHOTO_H + 0.16, 1);
+        }
+
+        // 照片讀不到時的替代圖
+        function placeholderPhoto() {
+          const c = document.createElement('canvas');
+          c.width = 256; c.height = 320;
+          const o = c.getContext('2d');
+          o.fillStyle = '#FDE4EA';
+          o.fillRect(0, 0, 256, 320);
+          o.textAlign = 'center';
+          o.textBaseline = 'middle';
+          o.font = '150px serif';
+          o.fillText('🐱', 128, 170);
+          setPhoto(new THREE.CanvasTexture(c), 256 / 320);
+        }
+        placeholderPhoto();
+        new THREE.TextureLoader().load(PHOTO_URL, tex => setPhoto(tex, tex.image.width / tex.image.height), undefined, () => {});
+
+        // ---------- 立在碗後方的名字（把文字貼圖疊很多層做出厚度） ----------
+        const nameGroup = new THREE.Group();
+        const PLINTH_H = 0.55; // 名字站在小台子上，才不會被碗擋住
+        const plinth = mesh(new THREE.BoxGeometry(3.7, PLINTH_H, 0.7), lambert(0xF9C4D0), true, true);
+        plinth.position.set(BOWL_POS.x, PLINTH_H / 2, -1.55);
+        scene.add(plinth);
+        nameGroup.position.set(BOWL_POS.x, PLINTH_H, -1.55);
+        nameGroup.scale.y = 0.001;
+        scene.add(nameGroup);
+        const NAME_W = 3.3, NAME_H = 1.65, NAME_LAYERS = 12, NAME_DEPTH = 0.3;
+
+        function buildName() {
+          const c = document.createElement('canvas');
+          c.width = 512; c.height = 256;
+          const o = c.getContext('2d');
+          let size = 210;
+          o.font = `700 ${size}px ${FONT}`;
+          while (o.measureText(NAME).width > 480 && size > 40) { size -= 6; o.font = `700 ${size}px ${FONT}`; }
+          const m = o.measureText(NAME);
+          o.textAlign = 'center';
+          o.textBaseline = 'alphabetic';
+          o.fillStyle = '#fff';
+          o.fillText(NAME, 256, 256 - 8 - (m.actualBoundingBoxDescent || 0)); // 字的底部貼齊桌面
+          const tex = new THREE.CanvasTexture(c);
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = 4;
+
+          const geo = new THREE.PlaneGeometry(NAME_W, NAME_H);
+          geo.translate(0, NAME_H / 2, 0);
+          const side = lambert(0xF28C38, { map: tex, alphaTest: 0.5, side: THREE.DoubleSide });
+          const face = lambert(0x3A2A24, { map: tex, alphaTest: 0.5, side: THREE.DoubleSide });
+          for (let i = 0; i < NAME_LAYERS; i++) {
+            const last = i === NAME_LAYERS - 1;
+            const layer = mesh(geo, last ? face : side, i % 3 === 0 || last, false);
+            layer.position.z = (i / (NAME_LAYERS - 1) - 0.5) * NAME_DEPTH;
+            nameGroup.add(layer);
+          }
+        }
+
+        // ---------- 運鏡 ----------
+        // az：水平繞行角、el：仰角、d：距離倍率、at：看向哪裡、hold：停留毫秒、sweep：停留期間額外繞行的角度
+        const LOOK_CENTER = [-0.1, 1.0, 0];
+        const IDLE = { az: 0, el: 0.34, d: 1, at: LOOK_CENTER, speed: 0.0025 };
+        const SHOTS = {
+          feeder:  { az: -0.42, el: 0.2,  d: 0.66, at: [-1.5, 1.25, 0],            hold: 2200, speed: 0.004 },
+          amount:  { az: 0.2,   el: 0.92, d: 0.56, at: [BOWL_POS.x, 0.35, BOWL_POS.z], hold: 2400, speed: 0.005 },
+          time:    { az: 0,     el: 0.28, d: 1.04, at: LOOK_CENTER, sweep: 0.9,    hold: 2600, speed: 0.003 },
+          status:  { az: 0.05,  el: 0.08, d: 0.6,  at: [BOWL_POS.x, 1.3, -0.9],    hold: 2200, speed: 0.004 },
+          warn:    { az: 0.5,   el: 0.2,  d: 0.5,  at: [BOWL_POS.x, 0.5, BOWL_POS.z], hold: 2400, speed: 0.008 },
+          success: { az: 0,     el: 0.46, d: 0.8,  at: [0.3, 0.8, 0.2], sweep: 1.5, hold: 3000, speed: 0.004 },
+          tap:     { az: 0,     el: 0.5,  d: 0.9,  at: LOOK_CENTER, sweep: 2.2,    hold: 2600, speed: 0.004 }
+        };
+        const cam = { az: 0.9, el: 0.75, d: 1.5, x: -0.1, y: 0.85, z: 0 }; // 開場從斜上方拉近
+        let shot = null, shotAge = 0, baseDist = 8;
+        let pointerX = 0, pointerSmooth = 0;
+
+        function focus(name) {
+          if (!SHOTS[name]) return;
+          shot = SHOTS[name];
+          shotAge = 0;
+          if (name === 'feeder') photoSpin = 1;
+          if (name === 'amount') bowlHop = 1;
+          if (name === 'status') nameHop = 1;
+        }
+
+        // ---------- 動畫狀態 ----------
+        const SHAKE_MS = 900, FEED_MS = 2000, MAX_AMOUNT = Math.max(...AMOUNTS);
+        let foodTarget = 0, foodLevel = 0;
+        let shakeLeft = 0, feedLeft = 0, confettiLeft = 0;
+        let photoSpin = 0, bowlHop = 0, nameHop = 0;
+        let startTime = null, nameBorn = null, visible = true, W = 0, H = 0;
+
+        function applyFood() {
+          kibbles.forEach(k => { k.visible = foodLevel > 0.02 && k.userData.level <= foodLevel + 0.001; });
+        }
+
+        function burstConfetti() {
+          confettiLeft = 2200;
+          confetti.forEach(f => {
+            f.visible = true;
+            f.position.set(BOWL_POS.x + rand(-0.3, 0.3), 0.8, BOWL_POS.z + rand(-0.3, 0.3));
+            f.userData.v.set(rand(-1.6, 1.6), rand(2.6, 4.4), rand(-1.2, 1.2));
+            f.userData.rx = rand(-6, 6);
+            f.userData.ry = rand(-6, 6);
+          });
+        }
+
+        function layout() {
+          const w = Math.floor(heroEl.clientWidth), h = Math.floor(heroEl.clientHeight);
+          if (w < 2 || h < 2 || (w === W && h === H)) return;
+          W = w; H = h;
+          renderer.setSize(W, H, false);
+          camera.aspect = W / H;
+          camera.updateProjectionMatrix();
+          // 讓整張場景（寬約 8、高約 3.7）剛好裝進畫面
+          const tan = Math.tan(FOV * Math.PI / 360);
+          baseDist = Math.max(8.0 / (2 * tan * camera.aspect), 3.7 / (2 * tan)) * 1.04;
+        }
+
+        function update(now, dt) {
+          if (!W || !visible) return;
+          if (startTime === null) startTime = now;
+          const t = now - startTime;
+          const sec = dt / 1000;
+
+          // --- 名字：長出來、偶爾跳一下 ---
+          if (nameBorn !== null) {
+            const k = clamp01((now - nameBorn) / 700);
+            const pop = 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2); // 帶一點回彈
+            nameHop = Math.max(0, nameHop - sec * 1.6);
+            nameGroup.scale.y = Math.max(0.001, pop) * (1 + Math.sin(nameHop * Math.PI * 3) * 0.12 * nameHop);
+            nameGroup.rotation.y = Math.sin(t / 2600) * 0.1;
+          }
+
+          // --- 相片：上下漂浮、輕輕擺動；選餵食者時轉一圈 ---
+          photoSpin = Math.max(0, photoSpin - sec * 0.9);
+          photo.position.y = PHOTO_BASE.y + Math.sin(t / 900) * 0.09;
+          photo.rotation.set(Math.sin(t / 1700) * 0.05, 0.38 + Math.sin(t / 1300) * 0.14 + smooth(photoSpin) * TAU, Math.sin(t / 1500) * 0.04);
+
+          // --- 花瓶的花搖一搖、空中的花飄落 ---
+          blooms.forEach((f, i) => { f.rotation.z = Math.sin(t / 1100 + i * 2) * 0.25; });
+          floaters.forEach(f => {
+            const d = f.userData;
+            d.y -= d.fall * sec;
+            if (d.y < 0.2) { d.y = 3.6; d.x = rand(-4.2, 4.2); }
+            f.position.set(d.x + Math.sin(t * 0.0008 + d.phase) * d.amp, d.y, d.z);
+            f.rotation.x += d.rx * sec;
+            f.rotation.y += d.ry * sec;
+          });
+          beam.material.opacity = 0.09 + Math.sin(t / 2100) * 0.03;
+
+          // --- 貓跳台小球、逗貓棒、貓草、鈴鐺球 ---
+          dangle.rotation.z = Math.sin(t / 620) * 0.45;
+          dangle.rotation.x = Math.sin(t / 830) * 0.2;
+
+          lureSwing = Math.max(0, lureSwing - sec * 0.55);
+          const wandBend = Math.sin(t / 1300) * 0.035 + Math.sin(t / 190) * 0.05 * lureSwing;
+          wand.quaternion.copy(WAND_Q).multiply(tmpQuat.setFromAxisAngle(AXIS_Z, wandBend));
+          lure.position.set(0, wandLen, 0).applyQuaternion(wand.quaternion).add(WAND_BASE);
+          lure.rotation.z = Math.sin(t / 700) * (0.3 + 0.9 * lureSwing);
+          lure.rotation.x = Math.sin(t / 930) * (0.15 + 0.5 * lureSwing);
+          lure.rotation.y += sec * 0.8;
+
+          blades.forEach(b => {
+            const d = b.userData;
+            b.rotation.set(d.leanX + Math.sin(t / 1000 + d.phase) * 0.07, 0, d.leanZ + Math.sin(t / 800 + d.phase) * 0.14);
+          });
+
+          ballKick = Math.max(0, ballKick - sec * 0.7);
+          const roll = Math.sin(t / 1700) * 0.3 + Math.sin(ballKick * Math.PI * 2.5) * ballKick * 0.9;
+          ball.position.set(BALL_HOME.x + roll, BALL_R + Math.abs(Math.sin(ballKick * Math.PI * 3)) * ballKick * 0.5, BALL_HOME.z);
+          ball.rotation.z = -roll / BALL_R;
+
+          // --- 過近警告：碗搖晃、主光轉橘紅 ---
+          let warn = 0;
+          if (shakeLeft > 0) {
+            shakeLeft = Math.max(0, shakeLeft - dt);
+            warn = shakeLeft / SHAKE_MS;
+          }
+          const wobble = Math.sin((SHAKE_MS - shakeLeft) * 0.035) * warn;
+          key.color.copy(KEY_COLOR).lerp(WARN_COLOR, clamp01(warn * 1.4));
+          hemi.intensity = 1.5 - 0.5 * warn;
+
+          // --- 記錄成功：湯匙舀起 → 移到碗上 → 翻倒 → 放回 ---
+          let pourK = -1;
+          if (feedLeft > 0) {
+            feedLeft = Math.max(0, feedLeft - dt);
+            const k = 1 - feedLeft / FEED_MS;
+            const lift = smooth(span(k, 0, 0.3));
+            const tip = smooth(span(k, 0.3, 0.42)) * (1 - smooth(span(k, 0.68, 0.78)));
+            const back = smooth(span(k, 0.78, 1));
+            const go = lift * (1 - back);
+            spoon.position.lerpVectors(SPOON_REST.p, SPOON_OVER.p, go);
+            spoon.position.y += Math.sin(go * Math.PI) * 0.5; // 走弧線，不要穿過碗
+            spoon.quaternion.copy(SPOON_REST.q).slerp(SPOON_OVER.q, go);
+            if (tip > 0) spoon.quaternion.slerp(SPOON_POUR.q, tip);
+            spoonFood.visible = k < 0.4;
+            pourK = span(k, 0.38, 0.72);
+            if (feedLeft === 0) { spoon.position.copy(SPOON_REST.p); spoon.quaternion.copy(SPOON_REST.q); }
+          }
+          pours.forEach(p => {
+            const k = pourK < 0 ? -1 : span(pourK, p.userData.delay, p.userData.delay + 0.55);
+            p.visible = k > 0 && k < 1;
+            if (p.visible) {
+              p.position.set(
+                SPOON_OVER.p.x - 0.1 + p.userData.dx * k,
+                1.4 - 1.0 * k * k,
+                SPOON_OVER.p.z + 0.25 + p.userData.dz * k
+              );
+              p.rotation.x += sec * 8;
+            }
+          });
+          if (confettiLeft > 0) {
+            confettiLeft = Math.max(0, confettiLeft - dt);
+            confetti.forEach(f => {
+              const d = f.userData;
+              d.v.y -= 5.5 * sec;
+              f.position.addScaledVector(d.v, sec);
+              f.rotation.x += d.rx * sec;
+              f.rotation.y += d.ry * sec;
+              f.visible = confettiLeft > 0 && f.position.y > -0.4;
+            });
+          }
+
+          // --- 飼料量：平滑追上目標（倒飼料前先保持空碗） ---
+          const pouringSoon = feedLeft > 0 && pourK <= 0;
+          if (!pouringSoon && Math.abs(foodTarget - foodLevel) > 0.001) {
+            foodLevel += (foodTarget - foodLevel) * Math.min(1, dt * 0.006);
+            applyFood();
+          }
+
+          // --- 罐罐：彈出／收起 ---
+          canScale += (canTarget - canScale) * Math.min(1, dt * 0.01);
+          canHop = Math.max(0, canHop - sec * 2);
+          can.visible = canScale > 0.02;
+          can.scale.setScalar(Math.max(0.001, canScale));
+          can.position.y = Math.sin(canHop * Math.PI) * 0.35;
+          can.rotation.y += sec * 0.6;
+
+          // --- 碗：選份量時跳一下 ---
+          bowlHop = Math.max(0, bowlHop - sec * 2.2);
+          bowlGroup.position.set(BOWL_POS.x + wobble * 0.12, Math.sin(bowlHop * Math.PI) * 0.22, BOWL_POS.z);
+          bowlGroup.rotation.z = wobble * 0.22;
+          bowlGroup.rotation.y += sec * 0.25;
+
+          // --- 相機 ---
+          let g = IDLE, sweep = 0;
+          if (shot) {
+            shotAge += dt;
+            if (shotAge >= shot.hold) shot = null;
+            else { g = shot; sweep = (g.sweep || 0) * (shotAge / g.hold * 2 - 1); }
+          }
+          pointerSmooth += (pointerX - pointerSmooth) * 0.05;
+          const idleSway = g === IDLE ? Math.sin(t / 4200) * 0.26 : 0;
+          const a = 1 - Math.exp(-dt * g.speed);
+          cam.az += (g.az + sweep + idleSway + pointerSmooth * 0.14 - cam.az) * a;
+          cam.el += (g.el - cam.el) * a;
+          cam.d += (g.d - cam.d) * a;
+          cam.x += (g.at[0] - cam.x) * a;
+          cam.y += (g.at[1] - cam.y) * a;
+          cam.z += (g.at[2] - cam.z) * a;
+
+          const dist = baseDist * cam.d;
+          const jitter = warn * 0.09; // 警告時鏡頭震動
+          camera.position.set(
+            cam.x + Math.sin(cam.az) * Math.cos(cam.el) * dist + (Math.random() - 0.5) * jitter,
+            cam.y + Math.sin(cam.el) * dist + (Math.random() - 0.5) * jitter,
+            cam.z + Math.cos(cam.az) * Math.cos(cam.el) * dist
+          );
+          camera.lookAt(cam.x, cam.y, cam.z);
+          renderer.render(scene, camera);
+        }
+
+        // ---------- 啟動 ----------
+        heroEl.classList.add('has-3d');
+        layout();
+        if ('ResizeObserver' in window) new ResizeObserver(layout).observe(heroEl);
+        else window.addEventListener('resize', layout);
+
+        // 捲出畫面時暫停，省電
+        if ('IntersectionObserver' in window) {
+          new IntersectionObserver(entries => { visible = entries[0].isIntersecting; }).observe(heroEl);
+        }
+
+        window.addEventListener('pointermove', e => { pointerX = (e.clientX / window.innerWidth) * 2 - 1; }, { passive: true });
+        canvas.addEventListener('click', () => { focus('tap'); nameHop = 1; ballKick = 1; lureSwing = 1; });
+
+        // 等手寫字型載好再做名字（最多等 1.5 秒）
+        const fontReady = document.fonts && document.fonts.load
+          ? Promise.race([
+              document.fonts.load(`700 44px "LXGW WenKai TC"`, NAME).catch(() => {}),
+              new Promise(resolve => setTimeout(resolve, 1500))
+            ])
+          : Promise.resolve();
+        fontReady.then(() => { buildName(); nameBorn = performance.now() + 500; });
+
+        return {
+          update,
+          focus,
+          updateFood(amount) { foodTarget = clamp01((Number(amount) || 0) / MAX_AMOUNT); },
+          shakeBowl() { shakeLeft = SHAKE_MS; focus('warn'); },
+          setCan(on) { canTarget = on ? 1 : 0; },
+          // withKibble：這一餐有貓糧才播放湯匙倒飼料；只吃罐罐就讓罐罐跳一下
+          feedBowl(withKibble) {
+            focus('success');
+            lureSwing = 1;
+            ballKick = 1;
+            if (withKibble === false) {
+              canHop = 1;
+              burstConfetti();
+              return;
+            }
+            feedLeft = FEED_MS;
+            foodLevel = 0;
+            applyFood();
+            setTimeout(burstConfetti, FEED_MS * 0.5);
+          }
+        };
+      }
+
+      let stage = null;
+      try {
+        stage = createScene();
+      } catch (err) {
+        console.warn('[Three.js] 3D 場景無法啟動', err);
+        $('hero').classList.remove('has-3d');
+        return;
+      }
+
+      // 對外介面：主程式用這幾個函式驅動場景
+      window.__huahua3d = {
+        updateFood: stage.updateFood,
+        shakeBowl: stage.shakeBowl,
+        feedBowl: stage.feedBowl,
+        setCan: stage.setCan,
+        focus: stage.focus
+      };
+      stage.updateFood(hasKibble(state.food) ? state.amount || 0 : 0);
+      stage.setCan(hasCan(state.food));
+
+      let prev = performance.now();
+      function frame(now) {
+        requestAnimationFrame(frame);
+        const dt = Math.min(50, now - prev);
+        prev = now;
+        stage.update(now, dt);
+      }
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
