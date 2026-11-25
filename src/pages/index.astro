@@ -17,13 +17,13 @@
   <script is:inline src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
   <style is:inline>
     :root {
-      --bg: #FDF1F3;        /* 肉球粉底 */
+      --bg: #FDF1F3;
       --card: #FFFFFF;
-      --ink: #3A2A24;       /* 花花的深棕毛色 */
+      --ink: #3A2A24;
       --ink-soft: #8A7068;
-      --patch: #F28C38;     /* 頭頂那塊橘 */
+      --patch: #F28C38;
       --patch-dark: #D9711F;
-      --pad: #F6A5B6;       /* 肉球粉 */
+      --pad: #F6A5B6;
       --line: #F1D6DC;
       --warn-bg: #FFF1E3;
       --warn-ink: #9A4A0B;
@@ -78,7 +78,6 @@
       filter: drop-shadow(0 3px 4px rgba(120, 60, 70, .25));
     }
 
-    /* 簡單版頂部的名字（3D 場景沒啟動時才看得到） */
     .hero-name {
       flex: 1;
       min-width: 0;
@@ -89,7 +88,6 @@
       line-height: 1;
     }
 
-    /* 3D 場景：啟動後蓋滿整個頂部，照片與名字改由場景裡的物件呈現 */
     .hero-canvas {
       position: absolute;
       inset: 0;
@@ -105,7 +103,6 @@
     .hero.has-3d img { display: none; }
 
     .hero.has-3d .hero-name {
-      /* 視覺上隱藏，但螢幕閱讀器仍讀得到 */
       position: absolute;
       width: 1px;
       height: 1px;
@@ -223,7 +220,6 @@
       outline-offset: 2px;
     }
 
-    /* 份量：數字放大 */
     .chip.amount {
       min-height: 48px;
       padding: 2px;
@@ -243,7 +239,6 @@
 
     .chip.amount .unit { font-size: 12px; font-weight: 500; line-height: 1; }
 
-    /* 狀態：表情在上 */
     .chip.status {
       min-height: 52px;
       padding: 4px 2px;
@@ -257,7 +252,6 @@
 
     .chip.status .emo { font-size: 20px; line-height: 1; }
 
-    /* 時間：左邊「現在／自訂」兩個選項，右邊是打開試算表的「編修」按鈕 */
     .time-row { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
     .time-chips { grid-template-columns: repeat(2, 1fr); }
 
@@ -414,12 +408,9 @@
     .toast.show { transform: translateY(0); visibility: visible; transition: transform .25s ease; }
     .toast.error { background: var(--err-ink); }
 
-    /* ---------- 減少動態：關掉 3D 與轉場 ---------- */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; }
     }
-
-  
 
     /* ===== 花花 Pet Care：高質感自然系視覺改版（僅覆寫外觀） ===== */
     :root {
@@ -477,6 +468,79 @@
     @media (max-width:380px) { .page { padding-left:12px; padding-right:12px; } .field { padding:11px 10px 12px; } .chip { font-size:13px; } }
     @media (prefers-reduced-motion: reduce) { body::before { display:none; } }
 
+    /* ===== 緊湊版：讓「記錄這一餐」同屏可見 ===== */
+    body { padding-bottom: calc(8px + env(safe-area-inset-bottom)); font-size: 14px; }
+    .page { padding: 8px 12px 0; }
+
+    .hero,
+    .hero.has-3d { height: clamp(96px, 14vh, 120px); border-radius: 18px; }
+
+    .last-feed, .today-stats { padding: 6px 12px; font-size: 13px; border-radius: 14px; }
+    .last-feed { margin-top: 8px; }
+    .last-feed strong, .today-stats strong { font-size: 15px; }
+    .today-stats { margin-top: 6px; }
+
+    .field { margin-top: 6px; padding: 6px 10px; border-radius: 14px; }
+    .field::after { content: ""; display: table; clear: both; }
+    .field > legend,
+    .field > label {
+      float: left;
+      width: 44px;
+      margin: 0 4px 0 0;
+      padding: 0;
+      line-height: 36px;
+      font-size: 13px;
+      letter-spacing: 0;
+    }
+    .field .hint { display: none; }
+
+    .chips { gap: 6px; }
+    .chip { min-height: 36px; padding: 2px 4px; border-radius: 11px; font-size: 14px; }
+
+    #foodChips .chip.status {
+      flex-direction: row;
+      min-height: 36px;
+      font-size: 14px;
+    }
+    #foodChips .chip.status .emo { display: none; }
+
+    .chip.amount { min-height: 36px; flex-direction: row; gap: 3px; }
+    .chip.amount .num { font-size: 18px; }
+    .chip.amount .unit { font-size: 12px; }
+
+    #statusChips .chip.status { min-height: 44px; font-size: 12px; padding: 2px; }
+    #statusChips .chip.status .emo { font-size: 16px; }
+
+    .time-row { gap: 6px; }
+    .custom-time {
+      margin: 4px 0 0 48px;
+      width: calc(100% - 48px);
+      min-height: 36px;
+      padding: 4px 10px;
+      font-size: 15px;
+    }
+    .time-result { display: none; }
+    .custom-time.show + .time-result {
+      display: block;
+      margin: 2px 0 0 48px;
+      font-size: 12px;
+    }
+
+    .note-wrap { margin-left: 48px; }
+    .note-input { min-height: 36px; padding: 4px 52px 4px 12px; font-size: 15px; }
+    .note-count { right: 10px; font-size: 12px; }
+
+    .submit-wrap {
+      position: sticky;
+      bottom: 0;
+      z-index: 5;
+      margin-top: 8px;
+      padding: 8px 0 calc(6px + env(safe-area-inset-bottom));
+      background: linear-gradient(to top, var(--bg) 75%, transparent);
+    }
+    .submit { min-height: 46px; font-size: 16px; border-radius: 14px; }
+
+    .recent { margin-top: 12px; padding: 12px 10px; }
   </style>
 </head>
 <body>
@@ -504,12 +568,12 @@
       </fieldset>
 
       <fieldset class="field" id="amountField">
-        <legend>貓糧幾匙</legend>
+        <legend>幾匙</legend>
         <div class="chips cols-3" role="radiogroup" aria-label="貓糧份量" id="amountChips"></div>
       </fieldset>
 
       <fieldset class="field">
-        <legend>什麼時候餵的</legend>
+        <legend>時間</legend>
         <div class="time-row">
           <div class="chips time-chips" role="radiogroup" aria-label="餵食時間" id="timeChips"></div>
           <a class="chip edit-link" id="editLink" href="#" target="_blank" rel="noopener" aria-label="編修：打開後台試算表"><span aria-hidden="true">✏️</span>編修</a>
@@ -519,14 +583,14 @@
       </fieldset>
 
       <fieldset class="field">
-        <legend>吃得怎麼樣</legend>
+        <legend>狀態</legend>
         <div class="chips cols-4" role="radiogroup" aria-label="貓咪狀態" id="statusChips"></div>
       </fieldset>
 
       <div class="field">
-        <label for="note">備註 <span class="hint">可不填，最多 30 字</span></label>
+        <label for="note">備註</label>
         <div class="note-wrap">
-          <input type="text" class="note-input" id="note" maxlength="30" placeholder="例如：有點軟便" autocomplete="off">
+          <input type="text" class="note-input" id="note" maxlength="30" placeholder="可不填，最多 30 字" autocomplete="off">
           <span class="note-count" id="noteCount">0/30</span>
         </div>
       </div>
@@ -555,13 +619,13 @@
        ============================================================ -->
   <script is:inline>
     // ====== 設定 ======
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqDG9QaCBfY6guDMgLDR8-CFoMnYVkOyNTEVc1a_0iHQZ6tt8Y8hcTkjMIpdE05EO1/exec'; // 換成部署好的 Web App 網址
-    const MIN_GAP_MIN = 120; // 距上一餐少於這個分鐘數就先提醒
-    const SHEET_URL = '';    // 「編修」要打開的試算表網址；留空就用後端回傳的網址
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqDG9QaCBfY6guDMgLDR8-CFoMnYVkOyNTEVc1a_0iHQZ6tt8Y8hcTkjMIpdE05EO1/exec';
+    const MIN_GAP_MIN = 120;
+    const SHEET_URL = '';
     const NOTE_MAX = 30;
 
     const FEEDERS = ['爸爸', '媽媽', '睿睿', '葳葳'];
-    const AMOUNTS = [1, 2, 3]; // 貓糧幾匙
+    const AMOUNTS = [1, 2, 3];
     const DEFAULT_FOOD = '貓糧';
     const FOODS = [
       { value: '貓糧', emo: '🥣', label: '貓糧' },
@@ -590,13 +654,12 @@
     const pad2 = n => String(n).padStart(2, '0');
     const fmtTime = d => `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
     const toLocalInput = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-    const toMs = v => new Date(v).getTime(); // 後端回傳數字或日期字串都能處理
-    const cue = name => { if (window.__huahua3d) window.__huahua3d.focus(name); }; // 通知 3D 場景切換運鏡
+    const toMs = v => new Date(v).getTime();
+    const cue = name => { if (window.__huahua3d) window.__huahua3d.focus(name); };
 
-    // 食物種類：罐罐固定一罐、不記數量；有貓糧才需要選幾匙
     const hasKibble = food => food !== '罐罐';
     const hasCan = food => food === '罐罐' || food === '貓糧+罐罐';
-    function mealText(food, amount) { // 舊記錄沒有食物種類，一律當作貓糧
+    function mealText(food, amount) {
       if (food === '罐罐') return '罐罐';
       return food === '貓糧+罐罐' ? `${amount} 匙＋罐罐` : `${amount} 匙`;
     }
@@ -662,7 +725,6 @@
           b.innerHTML = `<span class="emo" aria-hidden="true">${f.emo}</span><span>${f.label}</span>`;
         });
 
-      // 只吃罐罐時不用選幾匙
       $('amountField').hidden = !hasKibble(state.food);
       renderChips($('amountChips'), AMOUNTS, a => a === state.amount,
         a => { state.amount = a; save('amount', a); cue('amount'); },
@@ -695,7 +757,6 @@
       renderSubmit();
       renderLast();
 
-      // 3D 場景：更新碗裡的飼料量，以及桌上要不要放罐罐
       if (window.__huahua3d) {
         window.__huahua3d.updateFood(hasKibble(state.food) ? state.amount || 0 : 0);
         window.__huahua3d.setCan(hasCan(state.food));
@@ -755,7 +816,7 @@
       body.innerHTML = '';
       list.slice(0, 5).forEach(r => {
         const tr = document.createElement('tr');
-        const food = FOODS.find(f => f.value === r.food) || FOODS[0]; // 舊記錄沒有食物種類，當作貓糧
+        const food = FOODS.find(f => f.value === r.food) || FOODS[0];
         const spoons = hasKibble(food.value) ? `${r.amount} 匙` : '—';
         [r.feeder, food.label, spoons, fmtTime(new Date(r.time))].forEach((v, i) => {
           const td = document.createElement('td');
@@ -786,7 +847,7 @@
     }
     setSheetUrl();
     $('editLink').addEventListener('click', e => {
-      if (sheetUrl) return; // 有網址就照一般連結開新分頁
+      if (sheetUrl) return;
       e.preventDefault();
       toast('還拿不到試算表網址：請確認網路，或換上新版 Code.gs 並重新部署', true);
     });
@@ -837,9 +898,8 @@
       if (!t || isNaN(t)) { toast('請選擇餵食時間', true); return; }
       if (t.getTime() > Date.now() + 60000) { toast('餵食時間不能晚於現在', true); return; }
 
-      // 距上一餐太近：第一次按先提醒，再按一次才送出
       if (state.last && !state.confirming) {
-        const gap = Math.abs(t.getTime() - toMs(state.last.time)); // 補記較早的時間也算
+        const gap = Math.abs(t.getTime() - toMs(state.last.time));
         if (gap < MIN_GAP_MIN * 60000) {
           state.confirming = true;
           renderSubmit();
@@ -855,7 +915,7 @@
         catName: $('catName').value.trim() || '花花',
         feeder: state.feeder,
         food: state.food,
-        amount: kibble ? state.amount : 0, // 只吃罐罐時不記匙數
+        amount: kibble ? state.amount : 0,
         feedTime: t.getTime(),
         catStatus: state.status,
         note: $('note').value.trim().slice(0, NOTE_MAX)
@@ -866,7 +926,6 @@
       btn.textContent = '記錄中…';
 
       try {
-        // 不設 Content-Type、不用 no-cors：瀏覽器會以 text/plain 送出，不觸發預檢，也能讀到回應
         const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || '寫入失敗');
@@ -877,16 +936,14 @@
                                     status: payload.catStatus, note: payload.note };
         toast(`已記錄：${payload.catName}・${payload.feeder}・${mealText(payload.food, payload.amount)}`);
 
-        // 保留餵食者、食物種類與份量（下次通常一樣），其他回到預設
         state.timeKey = 'now';
         state.status = DEFAULT_STATUS;
         $('note').value = '';
         $('noteCount').textContent = `0/${NOTE_MAX}`;
 
-        // 3D 回饋：湯匙舀飼料倒進碗裡、鏡頭繞場、花朵噴出
         if (window.__huahua3d) window.__huahua3d.feedBowl(kibble);
       } catch (err) {
-        const offline = err instanceof TypeError; // fetch 連不上時各瀏覽器都丟 TypeError
+        const offline = err instanceof TypeError;
         toast(`沒有記錄成功：${offline ? '請檢查網路' : err.message}，再按一次`, true);
       } finally {
         state.sending = false;
@@ -899,7 +956,6 @@
     $('customTime').addEventListener('input', () => { state.confirming = false; renderTimeResult(); renderSubmit(); });
     $('note').addEventListener('input', e => { $('noteCount').textContent = `${e.target.value.length}/${NOTE_MAX}`; });
 
-    // 每分鐘更新「幾分鐘前」與「現在」的時間
     setInterval(() => { renderTimeResult(); renderLast(); }, 60000);
 
     renderAll();
@@ -907,7 +963,7 @@
   </script>
 
   <!-- ============================================================
-       2. Service Worker：離線快取，第一次載入後不用反覆下載靜態資源
+       2. Service Worker
        ============================================================ -->
   <script is:inline>
     if ('serviceWorker' in navigator) {
@@ -920,12 +976,6 @@
 
   <!-- ============================================================
        3. Three.js 沉浸式 3D 餵食場景（畫在頂部 hero 裡）
-          場景：圓餐桌、飼料碗與貓糧、湯匙、花瓶、飄浮的花、漂浮相片、
-                立在碗後方的名字、貓跳台、逗貓棒、貓草、鈴鐺球，加上會投影的主光與暖色補光。
-          運鏡：選餵食者 → 推向相片；選份量 → 俯看碗內；選時間 → 繞桌遠景；
-                選狀態 → 低角度看名字；過近警告 → 逼近碗＋鏡頭震動＋燈光轉橘紅；
-                記錄成功 → 湯匙舀飼料倒進碗、鏡頭繞場一圈、花朵噴出。
-          沒有 WebGL、Three.js 沒載到或使用者關閉動態時，退回照片＋文字的簡單版頂部。
        ============================================================ -->
   <script is:inline>
     (function () {
@@ -944,7 +994,7 @@
       const smooth = k => k * k * (3 - 2 * k);
       const clamp01 = v => Math.min(1, Math.max(0, v));
       const rand = (a, b) => a + Math.random() * (b - a);
-      const span = (k, a, b) => clamp01((k - a) / (b - a)); // k 在 a~b 之間的進度 0~1
+      const span = (k, a, b) => clamp01((k - a) / (b - a));
 
       function createScene() {
         const heroEl = $('hero');
@@ -970,7 +1020,7 @@
         scene.add(hemi);
 
         const KEY_COLOR = new THREE.Color(0xFFF1DC), WARN_COLOR = new THREE.Color(0xFF7A45);
-        const key = new THREE.DirectionalLight(KEY_COLOR, 2.6); // 主光：左上前方照下來，會投影
+        const key = new THREE.DirectionalLight(KEY_COLOR, 2.6);
         key.position.set(-4, 7, 5);
         key.castShadow = true;
         key.shadow.mapSize.set(1024, 1024);
@@ -981,11 +1031,10 @@
         key.shadow.normalBias = 0.03;
         scene.add(key);
 
-        const warm = new THREE.PointLight(0xFFB070, 7, 9); // 花瓶旁的暖色補光
+        const warm = new THREE.PointLight(0xFFB070, 7, 9);
         warm.position.set(3.0, 1.8, -0.3);
         scene.add(warm);
 
-        // 斜射的光束
         const beam = new THREE.Mesh(
           new THREE.ConeGeometry(2.4, 9, 24, 1, true),
           new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide })
@@ -1004,7 +1053,7 @@
         scene.add(tableEdge);
 
         const BOWL_POS = new THREE.Vector3(0.4, 0, 0.7);
-        const mat = mesh(new THREE.CircleGeometry(1.75, 48), lambert(0xFBD3DC), false, true); // 餐墊
+        const mat = mesh(new THREE.CircleGeometry(1.75, 48), lambert(0xFBD3DC), false, true);
         mat.rotation.x = -Math.PI / 2;
         mat.position.set(BOWL_POS.x, 0.006, BOWL_POS.z);
         scene.add(mat);
@@ -1033,7 +1082,7 @@
         const kibbleGeo = new THREE.IcosahedronGeometry(0.115, 0);
         const kibbleMats = [0xB9763F, 0xD08F52, 0x9C5F30].map(c => lambert(c, { flatShading: true }));
         const KIBBLE_COUNT = 54;
-        const kibbles = []; // 由下往上排好，份量越多顯示越多顆
+        const kibbles = [];
         for (let i = 0; i < KIBBLE_COUNT; i++) {
           const level = (i + 1) / KIBBLE_COUNT;
           const y = 0.14 + 0.56 * level;
@@ -1048,7 +1097,6 @@
           kibbles.push(k);
         }
 
-        // 掉在桌上的幾顆
         [[-0.2, 1.9], [0.9, 2.05], [1.5, -0.15], [-0.75, 0.25]].forEach(([x, z], i) => {
           const k = mesh(kibbleGeo, kibbleMats[i % 3]);
           k.position.set(x, 0.09, z);
@@ -1056,7 +1104,7 @@
           scene.add(k);
         });
 
-        // 罐罐：選了有罐罐的種類才出現在碗旁邊
+        // 罐罐
         const can = new THREE.Group();
         can.position.set(-1.3, 0, 1.25);
         can.add(mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.5, 28), lambert(0xD9DDE2)));
@@ -1069,7 +1117,6 @@
         scene.add(can);
         let canTarget = 0, canScale = 0, canHop = 0;
 
-        // 倒飼料時從湯匙落下的幾顆
         const pours = [];
         for (let i = 0; i < 8; i++) {
           const k = mesh(kibbleGeo, kibbleMats[i % 3]);
@@ -1079,7 +1126,7 @@
           pours.push(k);
         }
 
-        // ---------- 湯匙（匙斗在原點、匙柄往 +x） ----------
+        // ---------- 湯匙 ----------
         const spoon = new THREE.Group();
         const spoonMat = lambert(0xF28C38, { side: THREE.DoubleSide });
         const scoop = mesh(new THREE.SphereGeometry(0.34, 20, 12, 0, TAU, Math.PI / 2, Math.PI / 2), spoonMat);
@@ -1088,7 +1135,7 @@
         const handle = mesh(new THREE.CylinderGeometry(0.05, 0.065, 1.5, 10), spoonMat);
         handle.rotation.z = Math.PI / 2;
         handle.position.set(1.05, 0.27, 0);
-        const spoonFood = new THREE.Group(); // 匙裡的飼料，舀起來時才顯示
+        const spoonFood = new THREE.Group();
         for (let i = 0; i < 6; i++) {
           const k = mesh(kibbleGeo, kibbleMats[i % 3]);
           k.position.set(rand(-0.16, 0.16), 0.2 + (i % 2) * 0.09, rand(-0.13, 0.13));
@@ -1125,7 +1172,6 @@
           return g;
         }
 
-        // 花瓶 + 三朵花
         const vase = new THREE.Group();
         vase.position.set(3.3, 0, -0.9);
         vase.add(mesh(
@@ -1147,7 +1193,6 @@
         });
         scene.add(vase);
 
-        // 空中飄的花
         const floaters = [];
         for (let i = 0; i < 9; i++) {
           const f = makeFlower([0xF6A5B6, 0xFFFFFF, 0xFFD9E1][i % 3]);
@@ -1161,7 +1206,6 @@
           floaters.push(f);
         }
 
-        // 記錄成功時從碗噴出的花
         const confetti = [];
         for (let i = 0; i < 14; i++) {
           const f = makeFlower([0xF6A5B6, 0xFFD27A, 0xFFFFFF, 0xF28C38][i % 4]);
@@ -1172,7 +1216,7 @@
           confetti.push(f);
         }
 
-        // ---------- 貓跳台（左側）：麻繩柱、兩層平台、頂部小窩、掛著會晃的小球 ----------
+        // ---------- 貓跳台 ----------
         const tree = new THREE.Group();
         tree.position.set(-3.5, 0, 0.35);
         const treePink = lambert(0xF6A5B6), treeLight = lambert(0xF9C4D0);
@@ -1197,7 +1241,7 @@
         nest.scale.set(1, 0.8, 0.85);
         nest.position.y = 2.06;
         tree.add(midDeck, topDeck, nest);
-        const dangle = new THREE.Group(); // 掛在平台下的小球，繞著掛點擺動
+        const dangle = new THREE.Group();
         dangle.position.set(0.1, 1.02, 0.6);
         const dangleString = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.36, 5), lambert(0x8A7068), false);
         dangleString.position.y = -0.18;
@@ -1207,7 +1251,7 @@
         tree.add(dangle);
         scene.add(tree);
 
-        // ---------- 逗貓棒（右前方）：斜靠的棒子，線和羽毛垂在桌面上方擺盪 ----------
+        // ---------- 逗貓棒 ----------
         const WAND_BASE = new THREE.Vector3(3.25, 0, 1.15), WAND_TIP = new THREE.Vector3(2.05, 2.15, 0.95);
         const wandLen = WAND_BASE.distanceTo(WAND_TIP);
         const wand = new THREE.Group();
@@ -1222,7 +1266,7 @@
         wand.add(stick);
         scene.add(wand, wandStand);
 
-        const lure = new THREE.Group(); // 線＋羽毛，掛在棒尖，不跟著棒子傾斜
+        const lure = new THREE.Group();
         const lureString = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.8, 5), lambert(0x8A7068), false);
         lureString.position.y = -0.4;
         const knot = mesh(new THREE.SphereGeometry(0.06, 10, 8), lambert(0x3A2A24));
@@ -1236,9 +1280,9 @@
           lure.add(feather);
         });
         scene.add(lure);
-        let lureSwing = 0; // 額外的擺盪力道（記錄成功、點場景時加大）
+        let lureSwing = 0;
 
-        // ---------- 貓草（右側一盆）：草葉左右搖 ----------
+        // ---------- 貓草 ----------
         const grass = new THREE.Group();
         grass.position.set(2.55, 0, -0.35);
         grass.add(mesh(new THREE.CylinderGeometry(0.34, 0.25, 0.4, 20), lambert(0xE9A98A), true, true));
@@ -1262,7 +1306,7 @@
         }
         scene.add(grass);
 
-        // ---------- 鈴鐺球（碗的右前方）：偶爾滾一小段，點場景時被彈開 ----------
+        // ---------- 鈴鐺球 ----------
         const BALL_R = 0.2, BALL_HOME = new THREE.Vector3(1.5, BALL_R, 1.4);
         const ball = new THREE.Group();
         ball.add(mesh(new THREE.SphereGeometry(BALL_R, 18, 14), lambert(0xFFD27A)));
@@ -1300,7 +1344,6 @@
           frame.scale.set(w + 0.16, PHOTO_H + 0.16, 1);
         }
 
-        // 照片讀不到時的替代圖
         function placeholderPhoto() {
           const c = document.createElement('canvas');
           c.width = 256; c.height = 320;
@@ -1316,9 +1359,9 @@
         placeholderPhoto();
         new THREE.TextureLoader().load(PHOTO_URL, tex => setPhoto(tex, tex.image.width / tex.image.height), undefined, () => {});
 
-        // ---------- 立在碗後方的名字（把文字貼圖疊很多層做出厚度） ----------
+        // ---------- 名字 ----------
         const nameGroup = new THREE.Group();
-        const PLINTH_H = 0.55; // 名字站在小台子上，才不會被碗擋住
+        const PLINTH_H = 0.55;
         const plinth = mesh(new THREE.BoxGeometry(3.7, PLINTH_H, 0.7), lambert(0xF9C4D0), true, true);
         plinth.position.set(BOWL_POS.x, PLINTH_H / 2, -1.55);
         scene.add(plinth);
@@ -1338,7 +1381,7 @@
           o.textAlign = 'center';
           o.textBaseline = 'alphabetic';
           o.fillStyle = '#fff';
-          o.fillText(NAME, 256, 256 - 8 - (m.actualBoundingBoxDescent || 0)); // 字的底部貼齊桌面
+          o.fillText(NAME, 256, 256 - 8 - (m.actualBoundingBoxDescent || 0));
           const tex = new THREE.CanvasTexture(c);
           tex.colorSpace = THREE.SRGBColorSpace;
           tex.anisotropy = 4;
@@ -1356,7 +1399,6 @@
         }
 
         // ---------- 運鏡 ----------
-        // az：水平繞行角、el：仰角、d：距離倍率、at：看向哪裡、hold：停留毫秒、sweep：停留期間額外繞行的角度
         const LOOK_CENTER = [-0.1, 1.0, 0];
         const IDLE = { az: 0, el: 0.34, d: 1, at: LOOK_CENTER, speed: 0.0025 };
         const SHOTS = {
@@ -1368,7 +1410,7 @@
           success: { az: 0,     el: 0.46, d: 0.8,  at: [0.3, 0.8, 0.2], sweep: 1.5, hold: 3000, speed: 0.004 },
           tap:     { az: 0,     el: 0.5,  d: 0.9,  at: LOOK_CENTER, sweep: 2.2,    hold: 2600, speed: 0.004 }
         };
-        const cam = { az: 0.9, el: 0.75, d: 1.5, x: -0.1, y: 0.85, z: 0 }; // 開場從斜上方拉近
+        const cam = { az: 0.9, el: 0.75, d: 1.5, x: -0.1, y: 0.85, z: 0 };
         let shot = null, shotAge = 0, baseDist = 8;
         let pointerX = 0, pointerSmooth = 0;
 
@@ -1410,7 +1452,6 @@
           renderer.setSize(W, H, false);
           camera.aspect = W / H;
           camera.updateProjectionMatrix();
-          // 讓整張場景（寬約 8、高約 3.7）剛好裝進畫面
           const tan = Math.tan(FOV * Math.PI / 360);
           baseDist = Math.max(8.0 / (2 * tan * camera.aspect), 3.7 / (2 * tan)) * 1.04;
         }
@@ -1421,21 +1462,18 @@
           const t = now - startTime;
           const sec = dt / 1000;
 
-          // --- 名字：長出來、偶爾跳一下 ---
           if (nameBorn !== null) {
             const k = clamp01((now - nameBorn) / 700);
-            const pop = 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2); // 帶一點回彈
+            const pop = 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2);
             nameHop = Math.max(0, nameHop - sec * 1.6);
             nameGroup.scale.y = Math.max(0.001, pop) * (1 + Math.sin(nameHop * Math.PI * 3) * 0.12 * nameHop);
             nameGroup.rotation.y = Math.sin(t / 2600) * 0.1;
           }
 
-          // --- 相片：上下漂浮、輕輕擺動；選餵食者時轉一圈 ---
           photoSpin = Math.max(0, photoSpin - sec * 0.9);
           photo.position.y = PHOTO_BASE.y + Math.sin(t / 900) * 0.09;
           photo.rotation.set(Math.sin(t / 1700) * 0.05, 0.38 + Math.sin(t / 1300) * 0.14 + smooth(photoSpin) * TAU, Math.sin(t / 1500) * 0.04);
 
-          // --- 花瓶的花搖一搖、空中的花飄落 ---
           blooms.forEach((f, i) => { f.rotation.z = Math.sin(t / 1100 + i * 2) * 0.25; });
           floaters.forEach(f => {
             const d = f.userData;
@@ -1447,7 +1485,6 @@
           });
           beam.material.opacity = 0.09 + Math.sin(t / 2100) * 0.03;
 
-          // --- 貓跳台小球、逗貓棒、貓草、鈴鐺球 ---
           dangle.rotation.z = Math.sin(t / 620) * 0.45;
           dangle.rotation.x = Math.sin(t / 830) * 0.2;
 
@@ -1469,7 +1506,6 @@
           ball.position.set(BALL_HOME.x + roll, BALL_R + Math.abs(Math.sin(ballKick * Math.PI * 3)) * ballKick * 0.5, BALL_HOME.z);
           ball.rotation.z = -roll / BALL_R;
 
-          // --- 過近警告：碗搖晃、主光轉橘紅 ---
           let warn = 0;
           if (shakeLeft > 0) {
             shakeLeft = Math.max(0, shakeLeft - dt);
@@ -1479,7 +1515,6 @@
           key.color.copy(KEY_COLOR).lerp(WARN_COLOR, clamp01(warn * 1.4));
           hemi.intensity = 1.5 - 0.5 * warn;
 
-          // --- 記錄成功：湯匙舀起 → 移到碗上 → 翻倒 → 放回 ---
           let pourK = -1;
           if (feedLeft > 0) {
             feedLeft = Math.max(0, feedLeft - dt);
@@ -1489,7 +1524,7 @@
             const back = smooth(span(k, 0.78, 1));
             const go = lift * (1 - back);
             spoon.position.lerpVectors(SPOON_REST.p, SPOON_OVER.p, go);
-            spoon.position.y += Math.sin(go * Math.PI) * 0.5; // 走弧線，不要穿過碗
+            spoon.position.y += Math.sin(go * Math.PI) * 0.5;
             spoon.quaternion.copy(SPOON_REST.q).slerp(SPOON_OVER.q, go);
             if (tip > 0) spoon.quaternion.slerp(SPOON_POUR.q, tip);
             spoonFood.visible = k < 0.4;
@@ -1520,14 +1555,12 @@
             });
           }
 
-          // --- 飼料量：平滑追上目標（倒飼料前先保持空碗） ---
           const pouringSoon = feedLeft > 0 && pourK <= 0;
           if (!pouringSoon && Math.abs(foodTarget - foodLevel) > 0.001) {
             foodLevel += (foodTarget - foodLevel) * Math.min(1, dt * 0.006);
             applyFood();
           }
 
-          // --- 罐罐：彈出／收起 ---
           canScale += (canTarget - canScale) * Math.min(1, dt * 0.01);
           canHop = Math.max(0, canHop - sec * 2);
           can.visible = canScale > 0.02;
@@ -1535,13 +1568,11 @@
           can.position.y = Math.sin(canHop * Math.PI) * 0.35;
           can.rotation.y += sec * 0.6;
 
-          // --- 碗：選份量時跳一下 ---
           bowlHop = Math.max(0, bowlHop - sec * 2.2);
           bowlGroup.position.set(BOWL_POS.x + wobble * 0.12, Math.sin(bowlHop * Math.PI) * 0.22, BOWL_POS.z);
           bowlGroup.rotation.z = wobble * 0.22;
           bowlGroup.rotation.y += sec * 0.25;
 
-          // --- 相機 ---
           let g = IDLE, sweep = 0;
           if (shot) {
             shotAge += dt;
@@ -1559,7 +1590,7 @@
           cam.z += (g.at[2] - cam.z) * a;
 
           const dist = baseDist * cam.d;
-          const jitter = warn * 0.09; // 警告時鏡頭震動
+          const jitter = warn * 0.09;
           camera.position.set(
             cam.x + Math.sin(cam.az) * Math.cos(cam.el) * dist + (Math.random() - 0.5) * jitter,
             cam.y + Math.sin(cam.el) * dist + (Math.random() - 0.5) * jitter,
@@ -1575,7 +1606,6 @@
         if ('ResizeObserver' in window) new ResizeObserver(layout).observe(heroEl);
         else window.addEventListener('resize', layout);
 
-        // 捲出畫面時暫停，省電
         if ('IntersectionObserver' in window) {
           new IntersectionObserver(entries => { visible = entries[0].isIntersecting; }).observe(heroEl);
         }
@@ -1583,7 +1613,6 @@
         window.addEventListener('pointermove', e => { pointerX = (e.clientX / window.innerWidth) * 2 - 1; }, { passive: true });
         canvas.addEventListener('click', () => { focus('tap'); nameHop = 1; ballKick = 1; lureSwing = 1; });
 
-        // 等手寫字型載好再做名字（最多等 1.5 秒）
         const fontReady = document.fonts && document.fonts.load
           ? Promise.race([
               document.fonts.load(`700 44px "LXGW WenKai TC"`, NAME).catch(() => {}),
@@ -1598,7 +1627,6 @@
           updateFood(amount) { foodTarget = clamp01((Number(amount) || 0) / MAX_AMOUNT); },
           shakeBowl() { shakeLeft = SHAKE_MS; focus('warn'); },
           setCan(on) { canTarget = on ? 1 : 0; },
-          // withKibble：這一餐有貓糧才播放湯匙倒飼料；只吃罐罐就讓罐罐跳一下
           feedBowl(withKibble) {
             focus('success');
             lureSwing = 1;
@@ -1625,7 +1653,6 @@
         return;
       }
 
-      // 對外介面：主程式用這幾個函式驅動場景
       window.__huahua3d = {
         updateFood: stage.updateFood,
         shakeBowl: stage.shakeBowl,
